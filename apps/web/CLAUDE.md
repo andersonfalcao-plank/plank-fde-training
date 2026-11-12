@@ -16,3 +16,8 @@ This file has only the rules that are specific to Claude Code. Do not copy rules
 1. Get the design context with the Figma tools. Use the frame link in the Linear ticket.
 2. Use the components that Code Connect maps. Do not make a new component if a mapped one exists.
 3. If a Figma value has no design token, stop. Obey "When to stop" in `AGENTS.md`.
+
+## Skills
+
+1. To make a React component, run `/component <name>`. The skill is in `.claude/skills/component/` at the repository root.
+2. The skill writes the component, a render test and the barrel export. It obeys the rules in `AGENTS.md`.
