@@ -49,8 +49,8 @@ A barrel file is an `index.ts` that re-exports modules.
 File: `<file-name>.tsx`.
 
 1. Use a named export: `export function <ComponentName>(...)`. Do not use a default export. Next.js needs default exports only in route files.
-2. Make a Server Component. Add `"use client"` on line 1 only when the component needs state, effects, event handlers or browser APIs (for example `usePathname`).
-3. If the component has props, declare `type <ComponentName>Props = { ... };` above the function. Pass only serializable props to a Client Component.
+2. Make a Server Component. Add `"use client"` on line 1 only when the component needs state, effects, event handlers or browser APIs (for example `usePathname`). A Client Component needs more tests (see step 5).
+3. If the component has props, declare `type <ComponentName>Props = { ... };` above the function. A Server Component can pass only serializable props to a Client Component. A function prop (for example `onChange`) is correct only when Client Components pass it. If the request needs a function prop, keep it optional, and tell the user that a Server Component page cannot pass it.
 4. Do not make the component `async`. Vitest cannot render an `async` component. If the component needs data, the page reads it through `src/features/<feature>/server/queries.ts` and passes it as props. Do not make `queries.ts` for a component that gets all its data from props.
 5. Use the components in `src/components/ui/` and `src/components/` before you write new markup.
 6. Use Tailwind classes that map to the design tokens. Do not use raw colors, raw spacing or inline styles.
@@ -58,16 +58,21 @@ File: `<file-name>.tsx`.
 
 ## 5. Write the render test
 
-File: `<file-name>.test.tsx`, next to the component.
+File: `<file-name>.test.tsx`, in the same folder as `<file-name>.tsx`. In the folder layout of step 3.2, it goes in `<file-name>/` too. Do not put tests in a `__tests__/` folder.
 
 1. Use Vitest and React Testing Library. `vitest.config.mts` sets only the `@/` alias. Each test file must set the rest itself:
    - Line 1 is `// @vitest-environment jsdom`. Without it, `render` fails with `document is not defined`.
    - Call `cleanup()` in `afterEach`. Vitest globals are off, so Testing Library does not clean up the DOM itself.
    - Import `afterEach`, `describe`, `expect`, `it` (and `vi` if you mock) from `vitest`.
 2. Write one or more tests that render the component and find its main element. Use `screen.getByRole` first. Use `getByText` only if the element has no role. Many shadcn parts have no role: `Badge` is a `<span>`, and `Card`, `CardTitle` and `CardDescription` are `<div>`s. A `getBy*` query fails the test when the element is not there.
-3. Give the test a name that tells what it checks, for example `renders the title`. When the work has a ticket with acceptance criteria, put the AC number in the name, for example `AC2: ...`.
-4. If the component uses `next/navigation`, mock it with `vi.mock("next/navigation", ...)`. For an example, see `src/components/site-title.test.tsx`.
-5. Do not use `toBeInTheDocument()`. The project does not have `@testing-library/jest-dom`.
+3. If the component has `"use client"`, also test its events and its state:
+   - For each event handler (`onClick`, `onChange`, `onSubmit` and the others), fire the event with `fireEvent` from `@testing-library/react`. Then check the result.
+   - For each state change, check the new output that the user sees: text, attributes such as `aria-pressed` or `aria-expanded`, or elements that show or hide. Do not read the state directly.
+   - If the component calls a callback prop, pass `vi.fn()` and check the call and its arguments.
+   - Do not add `@testing-library/user-event`. It is not installed, and `AGENTS.md` does not allow a new dependency.
+4. Give the test a name that tells what it checks, for example `renders the title` or `shows the menu when you click the button`. When the work has a ticket with acceptance criteria, put the AC number in the name, for example `AC2: ...`.
+5. If the component uses `next/navigation`, mock it with `vi.mock("next/navigation", ...)`. For an example, see `src/components/site-title.test.tsx`.
+6. Do not use `toBeInTheDocument()`. The project does not have `@testing-library/jest-dom`.
 
 Template:
 
@@ -90,6 +95,34 @@ describe("<ComponentName>", () => {
     // If the element has no role: expect(screen.getByText("<text>")).toBeDefined();
   });
 });
+```
+
+Add these tests for a Client Component. Change them to fit its events and its state:
+
+```tsx
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// ...
+
+  it("<changes what> when you <do the event>", () => {
+    render(<<ComponentName> />);
+
+    fireEvent.click(screen.getByRole("button", { name: "<name>" }));
+
+    expect(
+      screen.getByRole("button", { name: "<new name>" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("calls <onChange> with <value> when you <do the event>", () => {
+    const onChange = vi.fn();
+    render(<<ComponentName> onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "<name>" }));
+
+    expect(onChange).toHaveBeenCalledWith(<value>);
+  });
 ```
 
 ## 6. Export from the barrel
@@ -117,4 +150,5 @@ Tell the user:
 
 - The files that you made or changed.
 - The barrel that exports the component, or that there is no barrel.
+- For a Client Component: the events and the state changes that the tests cover.
 - The result of each command in step 7.
