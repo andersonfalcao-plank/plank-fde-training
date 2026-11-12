@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const title = "Workbot";
+const title = "WorkBot";
 const className = "text-lg font-semibold tracking-tight";
 
 export function SiteTitle() {
