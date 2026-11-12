@@ -31,6 +31,10 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The Vercel project `plank-fde-training` uses the Vercel Git integration. Its root directory is `apps/web`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Each push to a branch that is not `main` makes a preview deployment for that branch.
+- Each push to `main` makes a production deployment. Branch protection on `main` lets changes in only through a merged pull request.
+- Vercel adds the preview URL to the pull request.
+
+`vercel.json` keeps Git deployments on for all branches. The production branch (`main`) is set in the Vercel project settings.
