@@ -24,19 +24,20 @@ This file has the project rules for all AI coding agents and for humans. Each ch
 
 ## Commands
 
-| Command             | What it does                                     |
-| ------------------- | ------------------------------------------------ |
-| `pnpm install`      | Install the packages                             |
-| `pnpm dev`          | Start the dev server                             |
-| `pnpm build`        | Make a production build                          |
-| `pnpm start`        | Serve the production build                       |
-| `pnpm lint`         | Run ESLint                                       |
-| `pnpm format`       | Format all files with Prettier                   |
-| `pnpm format:check` | Fail if a file is not formatted with Prettier    |
-| `pnpm typecheck`    | Generate Next.js types, then run `tsc --noEmit`  |
-| `pnpm test`         | Run Vitest one time (`pnpm test:watch` to watch) |
-| `pnpm test:e2e`     | Run the Playwright end-to-end tests              |
-| `pnpm check`        | Run lint, format:check, typecheck, test, build   |
+| Command              | What it does                                     |
+| -------------------- | ------------------------------------------------ |
+| `pnpm install`       | Install the packages                             |
+| `pnpm dev`           | Start the dev server                             |
+| `pnpm build`         | Make a production build                          |
+| `pnpm start`         | Serve the production build                       |
+| `pnpm lint`          | Run ESLint. Fail on an error or a warning        |
+| `pnpm format`        | Format all files with Prettier                   |
+| `pnpm format:check`  | Fail if a file is not formatted with Prettier    |
+| `pnpm ui:add <name>` | Add a shadcn component, then format all files    |
+| `pnpm typecheck`     | Generate Next.js types, then run `tsc --noEmit`  |
+| `pnpm test`          | Run Vitest one time (`pnpm test:watch` to watch) |
+| `pnpm test:e2e`      | Run the Playwright end-to-end tests              |
+| `pnpm check`         | Run lint, format:check, typecheck, test, build   |
 
 - Run `pnpm check` before each commit and before you say that a task is complete.
 - CI runs Lint, Typecheck, Test and Build on each pull request to `main` and on each push to `main`.
@@ -98,7 +99,7 @@ A Server Component renders on the server. It sends no JavaScript to the browser.
 1. Use Tailwind classes that map to the design tokens (the shadcn theme variables).
 2. Do not use raw colors, raw spacing or inline styles.
 3. Use an existing component from `src/components/ui/` or `src/components/` before you make a new one.
-4. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>`, then `pnpm format`.
+4. To add a shadcn component, run `pnpm ui:add <name>`. It formats the new files. Commit them formatted.
 5. The shadcn command can add packages. Ask first, unless the ticket names the component.
 
 ## Route states
