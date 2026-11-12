@@ -1,10 +1,15 @@
-import { render, screen } from "@testing-library/react";
+// @vitest-environment jsdom
+import { cleanup, render, screen } from "@testing-library/react";
 import { usePathname } from "next/navigation";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SiteTitle } from "./site-title";
 
 vi.mock("next/navigation", () => ({ usePathname: vi.fn() }));
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("SiteTitle", () => {
   it("renders the title as text on the home page", () => {

@@ -60,7 +60,10 @@ File: `<file-name>.tsx`.
 
 File: `<file-name>.test.tsx`, next to the component.
 
-1. Use Vitest and React Testing Library. Vitest globals are off, so import `describe`, `expect`, `it` (and `vi` if you mock) from `vitest`.
+1. Use Vitest and React Testing Library. `vitest.config.mts` sets only the `@/` alias. Each test file must set the rest itself:
+   - Line 1 is `// @vitest-environment jsdom`. Without it, `render` fails with `document is not defined`.
+   - Call `cleanup()` in `afterEach`. Vitest globals are off, so Testing Library does not clean up the DOM itself.
+   - Import `afterEach`, `describe`, `expect`, `it` (and `vi` if you mock) from `vitest`.
 2. Write one or more tests that render the component and find its main element. Use `screen.getByRole` first. Use `getByText` only if the element has no role. Many shadcn parts have no role: `Badge` is a `<span>`, and `Card`, `CardTitle` and `CardDescription` are `<div>`s. A `getBy*` query fails the test when the element is not there.
 3. Give the test a name that tells what it checks, for example `renders the title`. When the work has a ticket with acceptance criteria, put the AC number in the name, for example `AC2: ...`.
 4. If the component uses `next/navigation`, mock it with `vi.mock("next/navigation", ...)`. For an example, see `src/components/site-title.test.tsx`.
@@ -69,10 +72,15 @@ File: `<file-name>.test.tsx`, next to the component.
 Template:
 
 ```tsx
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { <ComponentName> } from "./<file-name>";
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("<ComponentName>", () => {
   it("renders <the main element>", () => {
