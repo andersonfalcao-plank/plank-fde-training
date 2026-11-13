@@ -81,6 +81,7 @@ describe("CreateRequestForm", () => {
 
   it("AC1: marks the required fields when the action returns errors", async () => {
     vi.mocked(createRequestAction).mockResolvedValue({
+      success: false,
       fieldErrors: {
         title: "Enter a title.",
         details: "Enter the details.",
@@ -116,6 +117,7 @@ describe("CreateRequestForm", () => {
 
   it("AC1: keeps the values that the user typed after an error", async () => {
     vi.mocked(createRequestAction).mockResolvedValue({
+      success: false,
       fieldErrors: { details: "Enter the details." },
       values: {
         title: "Laptop",
@@ -144,6 +146,7 @@ describe("CreateRequestForm", () => {
 
   it("AC2: sends the form data to the server action", async () => {
     vi.mocked(createRequestAction).mockResolvedValue({
+      success: false,
       fieldErrors: {},
       values: {},
     });
@@ -170,5 +173,55 @@ describe("CreateRequestForm", () => {
       team: "Support",
       priority: "medium",
     });
+  });
+
+  it("AC2: shows a success message and resets all fields after a valid submit", async () => {
+    // The first submit fails, so the form shows the sent values again.
+    // The second submit succeeds, so the form must start empty.
+    vi.mocked(createRequestAction)
+      .mockResolvedValueOnce({
+        success: false,
+        fieldErrors: { details: "Enter the details." },
+        values: {
+          title: "Laptop",
+          details: "",
+          team: "Finance",
+          priority: "high",
+        },
+      })
+      .mockResolvedValueOnce({ success: true, fieldErrors: {}, values: {} });
+    render(<CreateRequestForm />);
+
+    submit();
+    await waitFor(() => {
+      expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe(
+        "Finance",
+      );
+    });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "For Ana" },
+    });
+    submit();
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Your request was created.",
+      );
+    });
+    expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe("");
+    expect(
+      (screen.getByLabelText("Details") as HTMLTextAreaElement).value,
+    ).toBe("");
+    expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("");
+    expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe(
+      "medium",
+    );
+    expect(screen.queryByText("Enter the details.")).toBeNull();
+  });
+
+  it("AC2: shows no success message before a valid submit", () => {
+    render(<CreateRequestForm />);
+
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

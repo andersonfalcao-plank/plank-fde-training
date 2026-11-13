@@ -19,7 +19,11 @@ import {
   createRequestAction,
 } from "@/features/requests/server/actions";
 
-const initialState: CreateRequestState = { fieldErrors: {}, values: {} };
+const initialState: CreateRequestState = {
+  success: false,
+  fieldErrors: {},
+  values: {},
+};
 
 type FieldErrorProps = { field: CreateRequestField; error?: string };
 
@@ -59,6 +63,14 @@ export function CreateRequestForm() {
       noValidate
       className="flex flex-col gap-6"
     >
+      {state.success && (
+        <p
+          role="status"
+          className="rounded-lg border px-4 py-3 text-sm font-medium"
+        >
+          Your request was created.
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Title</Label>
         <Input
