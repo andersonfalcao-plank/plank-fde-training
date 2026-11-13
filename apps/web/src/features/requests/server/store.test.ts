@@ -27,6 +27,7 @@ describe("createRequest", () => {
       details: "Ana starts on Monday.",
       team: "Operations",
       priority: "high",
+      status: "open",
     });
   });
 

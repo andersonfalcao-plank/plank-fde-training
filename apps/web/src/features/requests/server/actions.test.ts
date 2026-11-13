@@ -82,7 +82,7 @@ describe("createRequestAction", () => {
   it("AC2: saves a valid Request and returns success with empty values", async () => {
     const state = await createRequestAction(initialState, formData(valid));
 
-    expect(listRequests()).toEqual([valid]);
+    expect(listRequests()).toEqual([{ ...valid, status: "open" }]);
     expect(state).toEqual({ success: true, fieldErrors: {}, values: {} });
   });
 

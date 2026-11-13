@@ -5,6 +5,7 @@ import {
   type RequestInput,
   RequestPrioritySchema,
   RequestSchema,
+  RequestStatusSchema,
   TITLE_MAX_LENGTH,
 } from "@/features/requests";
 
@@ -24,14 +25,15 @@ function fieldErrors(input: unknown) {
 }
 
 describe("RequestSchema", () => {
-  it("AND-24 AC1: has the title, details, team and priority fields", () => {
+  it("AND-24 AC1 and AND-27: has the title, details, team, priority and status fields", () => {
     expect(Object.keys(RequestSchema.shape).sort()).toEqual([
       "details",
       "priority",
+      "status",
       "team",
       "title",
     ]);
-    expect(RequestSchema.parse(valid)).toEqual(valid);
+    expect(RequestSchema.parse(valid)).toEqual({ ...valid, status: "open" });
   });
 
   it("AND-24 AC1: accepts only low, medium and high as priority", () => {
@@ -44,12 +46,14 @@ describe("RequestSchema", () => {
       details: string;
       team: string;
       priority: "low" | "medium" | "high";
+      status: "open" | "in_progress" | "done";
     }>();
     expectTypeOf<RequestInput>().toEqualTypeOf<{
       title: string;
       details: string;
       team: string;
       priority?: "low" | "medium" | "high" | undefined;
+      status?: "open" | "in_progress" | "done" | undefined;
     }>();
   });
 
@@ -83,5 +87,20 @@ describe("RequestSchema", () => {
       team: valid.team,
     };
     expect(RequestSchema.parse(withoutPriority).priority).toBe("medium");
+  });
+
+  it('AND-27 AC4: uses "open" when the status is not given', () => {
+    expect(RequestSchema.parse(valid).status).toBe("open");
+  });
+
+  it("AND-27 AC4: accepts only open, in_progress and done as status", () => {
+    expect(RequestStatusSchema.options).toEqual([
+      "open",
+      "in_progress",
+      "done",
+    ]);
+    expect(
+      RequestSchema.safeParse({ ...valid, status: "closed" }).success,
+    ).toBe(false);
   });
 });
