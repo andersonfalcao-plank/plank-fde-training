@@ -21,3 +21,5 @@ This file has only the rules that are specific to Claude Code. Do not copy rules
 
 1. To make a React component, run `/component <name>`. The skill is in `.claude/skills/component/` at the repository root.
 2. The skill writes the component, a render test and the barrel export. It obeys the rules in `AGENTS.md`.
+3. To make an API route handler, run `/api-route <name> [methods]`. The skill is in `.claude/skills/api-route/`.
+4. The skill writes `types.ts`, `route.ts` and `route.test.ts` in `src/app/api/<name>/`. The shared error handling is in `src/lib/api.ts`.
