@@ -10,3 +10,6 @@ coverage/
 *.log
 .vercel/
 .turbo/
+
+# Temporary files from Claude Code skills, for example the /pr-review diff
+.claude/tmp/
