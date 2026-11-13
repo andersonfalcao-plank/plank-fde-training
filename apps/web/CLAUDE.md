@@ -24,3 +24,9 @@ This file has only the rules that are specific to Claude Code. Do not copy rules
 3. To make an API route handler, run `/api-route <name> [methods]`. The skill is in `.claude/skills/api-route/`.
 4. The skill writes `types.ts`, `route.ts` and `route.test.ts` in `src/app/api/<name>/`. The shared error handling is in `src/lib/api.ts`.
 5. `/pre-deploy` runs the typecheck, the tests, a `console.log` search and the required variable check. It reports a pass or fail table and a verdict. Only the user can start it. Do not run it on your own.
+
+## Hooks
+
+1. After each Edit or Write, a `PostToolUse` hook formats the file with Prettier. The hook is in `.claude/settings.json` at the repository root.
+2. The hook formats only files in this repository. It uses `apps/web/.prettierignore` and skips file types that Prettier cannot format.
+3. Do not run Prettier on a file only to format it after you change it. The hook does it.
