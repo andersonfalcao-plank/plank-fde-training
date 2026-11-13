@@ -3,33 +3,24 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { Request } from "@/features/requests/schemas";
 
+import { CreatedMessage } from "./created-message";
 import { RequestTable } from "./request-table";
 
 type RequestsViewProps = {
   requests: Request[];
-  // True after the new request form saved a Request and came to this page.
-  created?: boolean;
+  // The token from the created search param. The new request form adds it
+  // after it saves a Request.
+  createdToken?: string;
 };
 
-function CreatedMessage() {
-  return (
-    <p
-      role="status"
-      className="rounded-lg border px-4 py-3 text-sm font-medium"
-    >
-      Your request was created.
-    </p>
-  );
-}
-
 // Shows the Requests in a table, or the empty state when there are none.
-export function RequestsView({ requests, created = false }: RequestsViewProps) {
+export function RequestsView({ requests, createdToken }: RequestsViewProps) {
   if (requests.length === 0) {
     // The list can be empty after a submit, for example when another server
     // instance saved the Request. Show the success message also then.
     return (
       <div className="flex flex-col gap-6">
-        {created && <CreatedMessage />}
+        {createdToken && <CreatedMessage token={createdToken} />}
         <div className="flex flex-col items-start gap-4">
           <h1 className="text-3xl font-semibold tracking-tight">
             All things are done
@@ -53,7 +44,7 @@ export function RequestsView({ requests, created = false }: RequestsViewProps) {
           <Link href="/requests/new">New request</Link>
         </Button>
       </div>
-      {created && <CreatedMessage />}
+      {createdToken && <CreatedMessage token={createdToken} />}
       <RequestTable requests={requests} />
     </div>
   );

@@ -51,5 +51,7 @@ export async function createRequestAction(
   }
 
   createRequest(result.data);
-  redirect(`/requests?${CREATED_PARAM}=1`);
+  // A new token for each saved Request. The Requests page shows the success
+  // message one time for each token.
+  redirect(`/requests?${CREATED_PARAM}=${crypto.randomUUID()}`);
 }
