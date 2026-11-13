@@ -1,17 +1,35 @@
 import { z } from "zod";
 
-export const RequestPrioritySchema = z.enum(["low", "medium", "high"]);
+export const TITLE_MAX_LENGTH = 300;
+
+export const RequestPrioritySchema = z.enum(["low", "medium", "high"], {
+  error: "Select a priority.",
+});
 export type RequestPriority = z.infer<typeof RequestPrioritySchema>;
 
+// The teams that the new request form shows. The schema accepts any team name.
+export const REQUEST_TEAMS = ["Operations", "Finance", "Support"] as const;
+
 // A Request has a title, details, a team and a priority.
-// The schema trims the text fields. details and priority have defaults.
+// The schema trims the text fields. Title, details and team are required.
+// Priority is "medium" when it is not given.
 export const RequestSchema = z.object({
-  title: z.string().trim().min(1),
-  details: z.string().trim().default(""),
-  team: z.string().trim().min(1),
+  title: z
+    .string({ error: "Enter a title." })
+    .trim()
+    .min(1, "Enter a title.")
+    .max(
+      TITLE_MAX_LENGTH,
+      `Use ${TITLE_MAX_LENGTH} characters or fewer for the title.`,
+    ),
+  details: z
+    .string({ error: "Enter the details." })
+    .trim()
+    .min(1, "Enter the details."),
+  team: z.string({ error: "Select a team." }).trim().min(1, "Select a team."),
   priority: RequestPrioritySchema.default("medium"),
 });
 
-// The input can leave out details and priority.
+// The input can leave out priority.
 export type RequestInput = z.input<typeof RequestSchema>;
 export type Request = z.output<typeof RequestSchema>;
