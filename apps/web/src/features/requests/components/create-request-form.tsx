@@ -12,7 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { usePriorities } from "@/features/requests/hooks/use-priorities";
 import { useTeams } from "@/features/requests/hooks/use-teams";
-import { TITLE_MAX_LENGTH } from "@/features/requests/schemas";
+import { TITLE_MAX_LENGTH } from "@/features/requests/constants";
 import {
   type CreateRequestField,
   type CreateRequestState,

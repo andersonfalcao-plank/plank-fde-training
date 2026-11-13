@@ -1,7 +1,7 @@
 import {
+  REQUEST_PRIORITIES,
   type RequestPriority,
-  RequestPrioritySchema,
-} from "@/features/requests/schemas";
+} from "@/features/requests/constants";
 
 export type PriorityOption = { value: RequestPriority; label: string };
 
@@ -11,7 +11,7 @@ const labels: Record<RequestPriority, string> = {
   high: "High",
 };
 
-const priorityOptions: PriorityOption[] = RequestPrioritySchema.options.map(
+const priorityOptions: PriorityOption[] = REQUEST_PRIORITIES.map(
   (priority) => ({ value: priority, label: labels[priority] }),
 );
 

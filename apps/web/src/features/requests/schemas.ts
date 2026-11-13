@@ -1,14 +1,23 @@
 import { z } from "zod";
 
-export const TITLE_MAX_LENGTH = 300;
+import {
+  REQUEST_PRIORITIES,
+  REQUEST_TEAMS,
+  type RequestPriority,
+  TITLE_MAX_LENGTH,
+} from "@/features/requests/constants";
 
-export const RequestPrioritySchema = z.enum(["low", "medium", "high"], {
+// Client code imports these values from constants.ts, not from this file.
+export {
+  REQUEST_PRIORITIES,
+  REQUEST_TEAMS,
+  type RequestPriority,
+  TITLE_MAX_LENGTH,
+};
+
+export const RequestPrioritySchema = z.enum(REQUEST_PRIORITIES, {
   error: "Select a priority.",
 });
-export type RequestPriority = z.infer<typeof RequestPrioritySchema>;
-
-// The teams that the new request form shows. The schema accepts any team name.
-export const REQUEST_TEAMS = ["Operations", "Finance", "Support"] as const;
 
 // A Request has a title, details, a team and a priority.
 // The schema trims the text fields. Title, details and team are required.

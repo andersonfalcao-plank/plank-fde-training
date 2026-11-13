@@ -1,4 +1,4 @@
-import { REQUEST_TEAMS } from "@/features/requests/schemas";
+import { REQUEST_TEAMS } from "@/features/requests/constants";
 
 export type TeamOption = { value: string; label: string };
 
