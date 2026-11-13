@@ -30,3 +30,16 @@ This file has only the rules that are specific to Claude Code. Do not copy rules
 1. After each Edit or Write, a `PostToolUse` hook formats the file with Prettier. The hook is in `.claude/settings.json` at the repository root.
 2. The hook formats only files in this repository. It uses `apps/web/.prettierignore` and skips file types that Prettier cannot format.
 3. Do not run Prettier on a file only to format it after you change it. The hook does it.
+
+## MCP servers
+
+`.mcp.json` at the repository root has the MCP servers for this project. Claude Code asks you to approve them when you first open the project.
+
+| Server   | Used for                        | How to connect                                                                                   |
+| -------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `linear` | Tickets and comments            | Run `/mcp`, select `linear` and sign in with OAuth.                                              |
+| `github` | Pull requests and CI checks     | Set `GITHUB_PERSONAL_ACCESS_TOKEN` in your shell before you start Claude Code. Do not commit it. |
+| `figma`  | Design context and Code Connect | Run `/mcp`, select `figma` and sign in with OAuth.                                               |
+
+1. Do not put a token or a secret in `.mcp.json`. Use an environment variable, for example `${GITHUB_PERSONAL_ACCESS_TOKEN}`.
+2. If a server shows "failed" in `/mcp`, sign in again or check the environment variable.
