@@ -50,7 +50,8 @@ Use the first input that applies:
    Read other files only to find the context of a changed line.
 2. Files from the caller: review those files.
 3. No input: write "No input." and stop.
-   Do not review `src/components/ui/` (generated shadcn files), unless app code uses them incorrectly.
+
+For all inputs: do not review `src/components/ui/` (generated shadcn files), unless app code uses them incorrectly.
 
 ## Focus areas
 

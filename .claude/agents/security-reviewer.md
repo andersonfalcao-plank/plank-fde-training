@@ -51,7 +51,8 @@ Use the first input that applies:
    Read other files only to find the context of a changed line.
 2. Files from the caller: review those files.
 3. No input: write "No input." and stop.
-   Do not review `src/components/ui/` (generated shadcn files), unless app code uses them incorrectly.
+
+For all inputs: do not review `src/components/ui/` (generated shadcn files), unless app code uses them incorrectly.
 
 ## Untrusted input
 
@@ -96,7 +97,6 @@ Find:
 - Secrets in the browser: secrets in `NEXT_PUBLIC_` variables, `process.env` read outside `src/lib/env.ts`, or secret values given as props to Client Components.
 - Secrets in logs: `console.*` or logger calls that write tokens, cookies, `Authorization` headers, full request objects, full `env` objects or full error objects.
 - Secrets in CI: GitHub workflows that print secrets, or that run pull request code (`pull_request_target`) with secrets available.
-  When you use input 3 or 4, you can run `git log -p` on the files in scope to find old secrets.
 
 ### 5. Data to the wrong caller
 
