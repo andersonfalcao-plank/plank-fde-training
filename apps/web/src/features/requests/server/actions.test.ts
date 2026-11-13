@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type CreateRequestState,
@@ -6,11 +6,13 @@ import {
 } from "@/features/requests/server/actions";
 import { clearRequests, listRequests } from "@/features/requests/server/store";
 
-const initialState: CreateRequestState = {
-  success: false,
-  fieldErrors: {},
-  values: {},
-};
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+}));
+
+const { redirect } = await import("next/navigation");
+
+const initialState: CreateRequestState = { fieldErrors: {}, values: {} };
 
 function formData(fields: Record<string, string>) {
   const data = new FormData();
@@ -27,6 +29,7 @@ const valid = {
 
 beforeEach(() => {
   clearRequests();
+  vi.mocked(redirect).mockClear();
 });
 
 describe("createRequestAction", () => {
@@ -42,8 +45,8 @@ describe("createRequestAction", () => {
       team: "Select a team.",
       priority: undefined,
     });
-    expect(state.success).toBe(false);
     expect(listRequests()).toEqual([]);
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it("AC1/AC4: returns the field messages when the browser does not send the fields", async () => {
@@ -79,11 +82,11 @@ describe("createRequestAction", () => {
     expect(listRequests()).toEqual([]);
   });
 
-  it("AC2: saves a valid Request and returns success with empty values", async () => {
-    const state = await createRequestAction(initialState, formData(valid));
+  it("AND-27 AC9: saves a valid Request and redirects to the Requests page", async () => {
+    await createRequestAction(initialState, formData(valid));
 
     expect(listRequests()).toEqual([{ ...valid, status: "open" }]);
-    expect(state).toEqual({ success: true, fieldErrors: {}, values: {} });
+    expect(redirect).toHaveBeenCalledWith("/requests?created=1");
   });
 
   it('AC5: uses "medium" when the form sends no priority', async () => {

@@ -77,4 +77,27 @@ describe("RequestsView", () => {
       screen.getByRole("link", { name: "New request" }).getAttribute("href"),
     ).toBe("/requests/new");
   });
+
+  it('AC9: shows "Your request was created." after the form redirects here', () => {
+    render(<RequestsView requests={[request]} created />);
+
+    expect(screen.getByRole("status").textContent).toBe(
+      "Your request was created.",
+    );
+    expect(
+      follows(
+        screen.getByRole("heading", { level: 1 }),
+        screen.getByRole("status"),
+      ),
+    ).toBe(true);
+    expect(follows(screen.getByRole("status"), screen.getByRole("table"))).toBe(
+      true,
+    );
+  });
+
+  it("AC9: shows no success message when the user opens the page", () => {
+    render(<RequestsView requests={[request]} />);
+
+    expect(screen.queryByRole("status")).toBeNull();
+  });
 });

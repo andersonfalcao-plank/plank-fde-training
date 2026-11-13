@@ -1,16 +1,15 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { CREATED_PARAM } from "@/features/requests/constants";
 import { RequestSchema } from "@/features/requests/schemas";
 import { createRequest } from "@/features/requests/server/store";
 
 export type CreateRequestField = "title" | "details" | "team" | "priority";
 
 export type CreateRequestState = {
-  // True after the action saved a Request. The form then shows a success
-  // message and starts empty.
-  success: boolean;
   // The message for each field that is not valid.
   fieldErrors: Partial<Record<CreateRequestField, string>>;
   // The values that the user sent. The form shows them again after an error.
@@ -25,7 +24,7 @@ function readText(formData: FormData, name: CreateRequestField) {
 }
 
 // Validates the form. Returns the field errors and the sent values, or saves
-// the Request and returns success with empty values.
+// the Request and goes to the Requests page with a success message.
 export async function createRequestAction(
   _previousState: CreateRequestState,
   formData: FormData,
@@ -41,7 +40,6 @@ export async function createRequestAction(
   if (!result.success) {
     const { fieldErrors } = z.flattenError(result.error);
     return {
-      success: false,
       fieldErrors: {
         title: fieldErrors.title?.[0],
         details: fieldErrors.details?.[0],
@@ -53,5 +51,5 @@ export async function createRequestAction(
   }
 
   createRequest(result.data);
-  return { success: true, fieldErrors: {}, values: {} };
+  redirect(`/requests?${CREATED_PARAM}=1`);
 }

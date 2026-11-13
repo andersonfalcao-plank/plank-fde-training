@@ -7,10 +7,23 @@ import { RequestTable } from "./request-table";
 
 type RequestsViewProps = {
   requests: Request[];
+  // True after the new request form saved a Request and came to this page.
+  created?: boolean;
 };
 
+function CreatedMessage() {
+  return (
+    <p
+      role="status"
+      className="rounded-lg border px-4 py-3 text-sm font-medium"
+    >
+      Your request was created.
+    </p>
+  );
+}
+
 // Shows the Requests in a table, or the empty state when there are none.
-export function RequestsView({ requests }: RequestsViewProps) {
+export function RequestsView({ requests, created = false }: RequestsViewProps) {
   if (requests.length === 0) {
     return (
       <div className="flex flex-col items-start gap-4">
@@ -35,6 +48,7 @@ export function RequestsView({ requests }: RequestsViewProps) {
           <Link href="/requests/new">New request</Link>
         </Button>
       </div>
+      {created && <CreatedMessage />}
       <RequestTable requests={requests} />
     </div>
   );

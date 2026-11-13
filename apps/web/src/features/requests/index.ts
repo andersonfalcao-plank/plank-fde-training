@@ -5,6 +5,7 @@ export { CreateRequestForm } from "./components/create-request-form";
 export { RequestTable } from "./components/request-table";
 export { RequestsView } from "./components/requests-view";
 export {
+  CREATED_PARAM,
   PRIORITY_LABELS,
   REQUEST_PRIORITIES,
   REQUEST_STATUSES,

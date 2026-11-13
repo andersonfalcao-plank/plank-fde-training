@@ -4,6 +4,10 @@
 
 export const TITLE_MAX_LENGTH = 300;
 
+// After a new Request is saved, the form goes to /requests?created=1.
+// The Requests page then shows a success message.
+export const CREATED_PARAM = "created";
+
 // The teams that the new request form shows. The schema accepts any team name.
 export const REQUEST_TEAMS = ["Operations", "Finance", "Support"] as const;
 
