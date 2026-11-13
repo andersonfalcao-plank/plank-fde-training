@@ -95,6 +95,21 @@ describe("RequestsView", () => {
     );
   });
 
+  it("AC9: shows the success message also when the list is empty", () => {
+    render(<RequestsView requests={[]} created />);
+
+    const status = screen.getByRole("status");
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "All things are done",
+    });
+    expect(status.textContent).toBe("Your request was created.");
+    expect(follows(status, heading)).toBe(true);
+    expect(
+      follows(heading, screen.getByRole("link", { name: "New request" })),
+    ).toBe(true);
+  });
+
   it("AC9: shows no success message when the user opens the page", () => {
     render(<RequestsView requests={[request]} />);
 

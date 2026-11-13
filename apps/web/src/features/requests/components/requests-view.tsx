@@ -25,17 +25,22 @@ function CreatedMessage() {
 // Shows the Requests in a table, or the empty state when there are none.
 export function RequestsView({ requests, created = false }: RequestsViewProps) {
   if (requests.length === 0) {
+    // The list can be empty after a submit, for example when another server
+    // instance saved the Request. Show the success message also then.
     return (
-      <div className="flex flex-col items-start gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          All things are done
-        </h1>
-        <Link
-          href="/requests/new"
-          className="text-sm font-medium underline underline-offset-4"
-        >
-          New request
-        </Link>
+      <div className="flex flex-col gap-6">
+        {created && <CreatedMessage />}
+        <div className="flex flex-col items-start gap-4">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            All things are done
+          </h1>
+          <Link
+            href="/requests/new"
+            className="text-sm font-medium underline underline-offset-4"
+          >
+            New request
+          </Link>
+        </div>
       </div>
     );
   }
