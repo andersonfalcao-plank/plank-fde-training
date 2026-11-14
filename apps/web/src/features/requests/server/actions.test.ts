@@ -86,7 +86,22 @@ describe("createRequestAction", () => {
     await createRequestAction(initialState, formData(valid));
 
     expect(listRequests()).toEqual([{ ...valid, status: "open" }]);
-    expect(redirect).toHaveBeenCalledWith("/requests?created=1");
+    expect(redirect).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(redirect).mock.calls[0]![0]).toMatch(
+      /^\/requests\?created=[0-9a-f-]{36}$/,
+    );
+  });
+
+  it("AND-28: uses a new created token for each saved Request", async () => {
+    await createRequestAction(initialState, formData(valid));
+    await createRequestAction(initialState, formData(valid));
+
+    const [first, second] = vi
+      .mocked(redirect)
+      .mock.calls.map(([url]) => new URL(url, "http://localhost"));
+    expect(first!.searchParams.get("created")).not.toBe(
+      second!.searchParams.get("created"),
+    );
   });
 
   it('AC5: uses "medium" when the form sends no priority', async () => {

@@ -13,7 +13,13 @@ export async function RequestsContent({ searchParams }: RequestsContentProps) {
   const params = await searchParams;
   const requests = await getRequests();
 
+  const created = params[CREATED_PARAM];
+  const createdToken = Array.isArray(created) ? created[0] : created;
+
   return (
-    <RequestsView requests={requests} created={params[CREATED_PARAM] === "1"} />
+    <RequestsView
+      requests={requests}
+      createdToken={createdToken || undefined}
+    />
   );
 }

@@ -79,7 +79,7 @@ describe("RequestsView", () => {
   });
 
   it('AC9: shows "Your request was created." after the form redirects here', () => {
-    render(<RequestsView requests={[request]} created />);
+    render(<RequestsView requests={[request]} createdToken="token-1" />);
 
     expect(screen.getByRole("status").textContent).toBe(
       "Your request was created.",
@@ -96,7 +96,7 @@ describe("RequestsView", () => {
   });
 
   it("AC9: shows the success message also when the list is empty", () => {
-    render(<RequestsView requests={[]} created />);
+    render(<RequestsView requests={[]} createdToken="token-2" />);
 
     const status = screen.getByRole("status");
     const heading = screen.getByRole("heading", {

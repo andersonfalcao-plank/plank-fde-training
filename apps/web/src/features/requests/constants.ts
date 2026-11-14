@@ -4,8 +4,8 @@
 
 export const TITLE_MAX_LENGTH = 300;
 
-// After a new Request is saved, the form goes to /requests?created=1.
-// The Requests page then shows a success message.
+// After a new Request is saved, the form goes to /requests?created=<token>.
+// The Requests page then shows a success message one time for each token.
 export const CREATED_PARAM = "created";
 
 // The teams that the new request form shows. The schema accepts any team name.
