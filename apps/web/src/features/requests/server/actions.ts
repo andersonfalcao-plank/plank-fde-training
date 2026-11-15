@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { CREATED_PARAM } from "@/features/requests/constants";
-import { RequestSchema } from "@/features/requests/schemas";
+import { CreateRequestSchema } from "@/features/requests/schemas";
 import { createRequest } from "@/features/requests/server/store";
 
 export type CreateRequestField = "title" | "details" | "team" | "priority";
@@ -36,7 +36,7 @@ export async function createRequestAction(
     priority: readText(formData, "priority") || undefined,
   };
 
-  const result = RequestSchema.safeParse(values);
+  const result = CreateRequestSchema.safeParse(values);
   if (!result.success) {
     const { fieldErrors } = z.flattenError(result.error);
     return {

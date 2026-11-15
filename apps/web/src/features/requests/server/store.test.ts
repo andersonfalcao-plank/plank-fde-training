@@ -129,3 +129,23 @@ describe("the in-memory list", () => {
     ]);
   });
 });
+
+describe("AND-30: the status of a new Request", () => {
+  it("AND-30 AC3: creates the Request with the status open", () => {
+    expect(
+      createRequest({ title: "First", details, team: "Support" }).status,
+    ).toBe("open");
+  });
+
+  it('AND-30 AC4: saves the status open when the client sends status "done"', () => {
+    createRequest({
+      title: "First",
+      details,
+      team: "Support",
+      // @ts-expect-error: the create input has no status.
+      status: "done",
+    });
+
+    expect(listRequests()[0]?.status).toBe("open");
+  });
+});

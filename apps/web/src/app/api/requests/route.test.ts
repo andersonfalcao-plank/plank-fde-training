@@ -186,3 +186,24 @@ describe("AND-31: POST with a body that is not an object", () => {
     expect(await listSavedRequests()).toEqual([]);
   });
 });
+
+describe("AND-30: the status in the API", () => {
+  it('AND-30 AC3/AC4: POST saves the status open when the body has status "done"', async () => {
+    const response = await post({ ...validBody, status: "done" });
+
+    expect(response.status).toBe(201);
+    expect(PostRequestsResponseSchema.parse(await response.json()).status).toBe(
+      "open",
+    );
+  });
+
+  it("AND-30 AC5: GET sends the status of each Request", async () => {
+    await post(validBody);
+    await post({ ...validBody, title: "Second" });
+
+    expect((await getAll()).map((request) => request.status)).toEqual([
+      "open",
+      "open",
+    ]);
+  });
+});

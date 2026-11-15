@@ -50,6 +50,13 @@ export const RequestSchema = z.object({
 export type RequestInput = z.input<typeof RequestSchema>;
 export type Request = z.output<typeof RequestSchema>;
 
+// What the user sends to create a Request: the Request without the status.
+// The server sets the status. The schema removes a status that the client sends.
+// The Server Action of the form and the API use this same schema.
+export const CreateRequestSchema = RequestSchema.omit({ status: true });
+
+export type CreateRequestInput = z.input<typeof CreateRequestSchema>;
+
 // A Request that the API saved. The API adds the id and the creation time.
 export const SavedRequestSchema = RequestSchema.extend({
   id: z.uuid(),

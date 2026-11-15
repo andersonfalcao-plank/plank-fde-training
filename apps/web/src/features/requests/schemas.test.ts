@@ -1,6 +1,9 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
+import { REQUEST_STATUSES } from "@/features/requests/constants";
 import {
+  type CreateRequestInput,
+  CreateRequestSchema,
   type Request,
   type RequestInput,
   RequestPrioritySchema,
@@ -102,5 +105,36 @@ describe("RequestSchema", () => {
     expect(
       RequestSchema.safeParse({ ...valid, status: "closed" }).success,
     ).toBe(false);
+  });
+});
+
+describe("AND-30: the status of a Request", () => {
+  it("AND-30 AC1: REQUEST_STATUSES is open, in_progress and done", () => {
+    expect(REQUEST_STATUSES).toEqual(["open", "in_progress", "done"]);
+  });
+
+  it("AND-30 AC2: the entity schema has the status, and the Request type includes it", () => {
+    expect(RequestSchema.shape.status.unwrap().options).toEqual([
+      ...REQUEST_STATUSES,
+    ]);
+    expectTypeOf<Request["status"]>().toEqualTypeOf<
+      "open" | "in_progress" | "done"
+    >();
+  });
+
+  it("AND-30 AC4: the create input schema does not have the status", () => {
+    expect(Object.keys(CreateRequestSchema.shape).sort()).toEqual([
+      "details",
+      "priority",
+      "team",
+      "title",
+    ]);
+    expectTypeOf<CreateRequestInput>().not.toHaveProperty("status");
+  });
+
+  it("AND-30 AC4: the create input schema removes a status that the client sends", () => {
+    expect(CreateRequestSchema.parse({ ...valid, status: "done" })).toEqual(
+      valid,
+    );
   });
 });
