@@ -96,3 +96,46 @@ describe("listSavedRequests", () => {
     expect(await listSavedRequests()).toHaveLength(1);
   });
 });
+
+describe("AND-31: the list stays newest first", () => {
+  it("AND-31 AC3: a read does not sort the list", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-15T10:00:00.000Z"));
+    await saveRequest({ ...input, title: "Old" });
+    vi.setSystemTime(new Date("2026-11-15T11:00:00.000Z"));
+    await saveRequest({ ...input, title: "New" });
+    const sort = vi.spyOn(Array.prototype, "sort");
+    let titles: string[];
+    try {
+      titles = (await listSavedRequests()).map((request) => request.title);
+      expect(sort).not.toHaveBeenCalled();
+    } finally {
+      sort.mockRestore();
+    }
+
+    expect(titles).toEqual(["New", "Old"]);
+  });
+
+  it("AND-31 AC3: keeps the stored list newest first, also when a save has an older time", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    for (const [time, title] of [
+      ["2026-11-15T10:00:00.000Z", "10:00"],
+      ["2026-11-15T12:00:00.000Z", "12:00"],
+      ["2026-11-15T09:00:00.000Z", "09:00"],
+      ["2026-11-15T11:00:00.000Z", "11:00"],
+    ]) {
+      vi.setSystemTime(new Date(time!));
+      await saveRequest({ ...input, title: title! });
+    }
+
+    const stored = (globalThis as { workbotApiRequests?: { title: string }[] })
+      .workbotApiRequests;
+
+    expect(stored?.map((request) => request.title)).toEqual([
+      "12:00",
+      "11:00",
+      "10:00",
+      "09:00",
+    ]);
+  });
+});

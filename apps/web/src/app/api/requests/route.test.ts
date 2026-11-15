@@ -175,3 +175,14 @@ describe("GET /api/requests", () => {
     ErrorResponseSchema.parse(await response.json());
   });
 });
+
+describe("AND-31: POST with a body that is not an object", () => {
+  it("AND-31 AC1: returns 422 with the cause and saves nothing", async () => {
+    const response = await post([]);
+
+    expect(response.status).toBe(422);
+    const body = FieldErrorResponseSchema.parse(await response.json());
+    expect(body.formErrors[0]).toMatch(/expected object/);
+    expect(await listSavedRequests()).toEqual([]);
+  });
+});
