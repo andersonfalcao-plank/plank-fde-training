@@ -1,124 +1,154 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  type CreateRequestState,
-  createRequestAction,
-} from "@/features/requests/server/actions";
-import { clearRequests, listRequests } from "@/features/requests/server/store";
+import { createRequestAction } from "@/features/requests/server/actions";
 
-vi.mock("next/navigation", () => ({
-  redirect: vi.fn(),
+vi.mock("@/lib/config", () => ({
+  config: { apiBaseUrl: "https://api.example.test" },
 }));
 
-const { redirect } = await import("next/navigation");
+const fetchMock = vi.fn<typeof fetch>();
 
-const initialState: CreateRequestState = { fieldErrors: {}, values: {} };
-
-function formData(fields: Record<string, string>) {
-  const data = new FormData();
-  for (const [name, value] of Object.entries(fields)) data.set(name, value);
-  return data;
-}
-
-const valid = {
+const values = {
   title: "Laptop for the new hire",
   details: "Ana starts on Monday.",
   team: "Operations",
   priority: "high",
 };
 
+const saved = {
+  ...values,
+  status: "open",
+  id: "4de9754f-db84-44e2-8577-a99067a54be9",
+  createdAt: "2026-11-15T20:26:16.822Z",
+};
+
 beforeEach(() => {
-  clearRequests();
-  vi.mocked(redirect).mockClear();
+  vi.stubGlobal("fetch", fetchMock);
+  vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  fetchMock.mockReset();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("createRequestAction", () => {
-  it("AC1/AC4: returns an error for each empty required field and saves nothing", async () => {
-    const state = await createRequestAction(
-      initialState,
-      formData({ title: " ", details: "", team: "", priority: "medium" }),
-    );
+  it("AND-32 AC8: sends POST ${API_BASE_URL}/api/requests with the values as JSON", async () => {
+    fetchMock.mockResolvedValue(Response.json(saved, { status: 201 }));
 
-    expect(state.fieldErrors).toEqual({
-      title: "Enter a title.",
-      details: "Enter the details.",
-      team: "Select a team.",
-      priority: undefined,
+    await createRequestAction(values);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("https://api.example.test/api/requests");
+    expect(init?.method).toBe("POST");
+    expect(new Headers(init?.headers).get("Content-Type")).toBe(
+      "application/json",
+    );
+    expect(JSON.parse(String(init?.body))).toEqual(values);
+  });
+
+  it("AND-32 AC8: sends only the known fields, and leaves out an empty priority", async () => {
+    fetchMock.mockResolvedValue(Response.json(saved, { status: 201 }));
+
+    await createRequestAction({
+      ...values,
+      priority: "",
+      // @ts-expect-error: the client can send other fields. They are not sent on.
+      status: "done",
     });
-    expect(listRequests()).toEqual([]);
-    expect(redirect).not.toHaveBeenCalled();
-  });
 
-  it("AC1/AC4: returns the field messages when the browser does not send the fields", async () => {
-    // A select with the disabled "Select a team" option sends no team.
-    const state = await createRequestAction(initialState, formData({}));
-
-    expect(state.fieldErrors).toEqual({
-      title: "Enter a title.",
-      details: "Enter the details.",
-      team: "Select a team.",
-      priority: undefined,
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(String(init?.body))).toEqual({
+      title: values.title,
+      details: values.details,
+      team: values.team,
     });
   });
 
-  it("AC1: returns the values that the user sent, so the form keeps them", async () => {
-    const state = await createRequestAction(
-      initialState,
-      formData({ ...valid, details: "" }),
-    );
+  it("AND-32 AC8: returns { ok: true, data } for a 201", async () => {
+    fetchMock.mockResolvedValue(Response.json(saved, { status: 201 }));
 
-    expect(state.values).toEqual({ ...valid, details: "" });
+    expect(await createRequestAction(values)).toEqual({
+      ok: true,
+      data: saved,
+    });
   });
 
-  it("AC3: returns an error for a title of more than 300 characters", async () => {
-    const state = await createRequestAction(
-      initialState,
-      formData({ ...valid, title: "a".repeat(301) }),
+  it("AND-32 AC8/AC11: returns { ok: false, fieldErrors, error } for a 422", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json(
+        {
+          error: { message: "Invalid input" },
+          fieldErrors: {
+            title: ["Enter a title.", "Second message"],
+            team: ["Select a team."],
+            other: ["Not a form field"],
+          },
+          formErrors: [],
+        },
+        { status: 422 },
+      ),
     );
 
-    expect(state.fieldErrors.title).toBe(
-      "Use 300 characters or fewer for the title.",
-    );
-    expect(listRequests()).toEqual([]);
+    expect(await createRequestAction(values)).toEqual({
+      ok: false,
+      fieldErrors: { title: "Enter a title.", team: "Select a team." },
+      error: "Invalid input",
+    });
   });
 
-  it("AND-27 AC9: saves a valid Request and redirects to the Requests page", async () => {
-    await createRequestAction(initialState, formData(valid));
-
-    expect(listRequests()).toEqual([{ ...valid, status: "open" }]);
-    expect(redirect).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(redirect).mock.calls[0]![0]).toMatch(
-      /^\/requests\?created=[0-9a-f-]{36}$/,
-    );
-  });
-
-  it("AND-28: uses a new created token for each saved Request", async () => {
-    await createRequestAction(initialState, formData(valid));
-    await createRequestAction(initialState, formData(valid));
-
-    const [first, second] = vi
-      .mocked(redirect)
-      .mock.calls.map(([url]) => new URL(url, "http://localhost"));
-    expect(first!.searchParams.get("created")).not.toBe(
-      second!.searchParams.get("created"),
-    );
-  });
-
-  it('AC5: uses "medium" when the form sends no priority', async () => {
-    const { title, details, team } = valid;
-    await createRequestAction(initialState, formData({ title, details, team }));
-
-    expect(listRequests()[0]?.priority).toBe("medium");
-  });
-});
-
-describe("AND-30: the status of a Request from the form", () => {
-  it('AND-30 AC3/AC4: saves the status open when the form sends status "done"', async () => {
-    await createRequestAction(
-      initialState,
-      formData({ ...valid, status: "done" }),
+  it("AND-32 AC11: returns the API message and no field errors for a 422 with no field errors", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json(
+        {
+          error: { message: "Invalid input" },
+          fieldErrors: {},
+          formErrors: ["Invalid input: expected object, received array"],
+        },
+        { status: 422 },
+      ),
     );
 
-    expect(listRequests().map((request) => request.status)).toEqual(["open"]);
+    expect(await createRequestAction(values)).toEqual({
+      ok: false,
+      fieldErrors: {},
+      error: "Invalid input",
+    });
+  });
+
+  it.each([400, 500])(
+    'AND-32 AC8/AC12: returns { ok: false, error: "Try again." } for a %i',
+    async (status) => {
+      fetchMock.mockResolvedValue(
+        Response.json({ error: { message: "Bad" } }, { status }),
+      );
+
+      expect(await createRequestAction(values)).toEqual({
+        ok: false,
+        error: "Try again.",
+      });
+    },
+  );
+
+  it('AND-32 AC12: returns "Try again." for a network error', async () => {
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    expect(await createRequestAction(values)).toEqual({
+      ok: false,
+      error: "Try again.",
+    });
+  });
+
+  it('AND-32 AC8: returns "Try again." when the 201 body does not match the schema', async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({ title: "No id" }, { status: 201 }),
+    );
+
+    expect(await createRequestAction(values)).toEqual({
+      ok: false,
+      error: "Try again.",
+    });
   });
 });

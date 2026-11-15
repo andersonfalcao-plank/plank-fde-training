@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,17 +9,19 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  TITLE_MAX_LENGTH,
+  TRY_AGAIN_MESSAGE,
+} from "@/features/requests/constants";
+import { useCreateRequest } from "@/features/requests/hooks/use-create-request";
 import { usePriorities } from "@/features/requests/hooks/use-priorities";
 import { useTeams } from "@/features/requests/hooks/use-teams";
-import { TITLE_MAX_LENGTH } from "@/features/requests/constants";
-import {
-  type CreateRequestField,
-  type CreateRequestState,
-  createRequestAction,
+import type {
+  CreateRequestField,
+  CreateRequestValues,
 } from "@/features/requests/server/actions";
-
-const initialState: CreateRequestState = { fieldErrors: {}, values: {} };
 
 type FieldErrorProps = { field: CreateRequestField; error?: string };
 
@@ -32,33 +34,57 @@ function FieldError({ field, error }: FieldErrorProps) {
   );
 }
 
+function readValues(form: HTMLFormElement): CreateRequestValues {
+  const data = new FormData(form);
+  const read = (name: CreateRequestField) => {
+    const value = data.get(name);
+    // A select with no option selected sends no value. It reads as "".
+    return typeof value === "string" ? value : "";
+  };
+  return {
+    title: read("title"),
+    details: read("details"),
+    team: read("team"),
+    priority: read("priority"),
+  };
+}
+
 export function CreateRequestForm() {
-  const [state, formAction, pending] = useActionState(
-    createRequestAction,
-    initialState,
-  );
+  const mutation = useCreateRequest();
   const teams = useTeams();
   const priorities = usePriorities();
 
+  const result = mutation.data;
+  const fieldErrors =
+    result && !result.ok && "fieldErrors" in result ? result.fieldErrors : {};
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+  // The message above the submit button: "Try again." when the server action
+  // fails, or the API message for a 422 with no field errors.
+  const formError = mutation.isError
+    ? TRY_AGAIN_MESSAGE
+    : result && !result.ok && !hasFieldErrors
+      ? result.error
+      : undefined;
+  // The page changes after a success. Keep the button disabled until then.
+  const busy = mutation.isPending || result?.ok === true;
+
   // The props that mark a field when it has an error.
   function errorProps(field: CreateRequestField) {
-    const error = state.fieldErrors[field];
+    const error = fieldErrors[field];
     return {
       "aria-invalid": error ? true : undefined,
       "aria-describedby": error ? `${field}-error` : undefined,
     };
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    // The form does not reload the page, so the fields keep the user's input.
+    event.preventDefault();
+    mutation.mutate(readValues(event.currentTarget));
+  }
+
   return (
-    // React resets the form after the action. A select keeps only its first
-    // defaultValue, so a new key remounts the fields with the values from the
-    // action.
-    <form
-      key={JSON.stringify(state.values)}
-      action={formAction}
-      noValidate
-      className="flex flex-col gap-6"
-    >
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Title</Label>
         <Input
@@ -66,10 +92,9 @@ export function CreateRequestForm() {
           name="title"
           required
           maxLength={TITLE_MAX_LENGTH}
-          defaultValue={state.values.title}
           {...errorProps("title")}
         />
-        <FieldError field="title" error={state.fieldErrors.title} />
+        <FieldError field="title" error={fieldErrors.title} />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -79,10 +104,9 @@ export function CreateRequestForm() {
           name="details"
           required
           rows={5}
-          defaultValue={state.values.details}
           {...errorProps("details")}
         />
-        <FieldError field="details" error={state.fieldErrors.details} />
+        <FieldError field="details" error={fieldErrors.details} />
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -93,7 +117,7 @@ export function CreateRequestForm() {
             name="team"
             required
             className="w-full"
-            defaultValue={state.values.team ?? ""}
+            defaultValue=""
             {...errorProps("team")}
           >
             <NativeSelectOption value="" disabled>
@@ -105,7 +129,7 @@ export function CreateRequestForm() {
               </NativeSelectOption>
             ))}
           </NativeSelect>
-          <FieldError field="team" error={state.fieldErrors.team} />
+          <FieldError field="team" error={fieldErrors.team} />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -114,7 +138,7 @@ export function CreateRequestForm() {
             id="priority"
             name="priority"
             className="w-full"
-            defaultValue={state.values.priority ?? "medium"}
+            defaultValue="medium"
             {...errorProps("priority")}
           >
             {priorities.map((priority) => (
@@ -123,12 +147,18 @@ export function CreateRequestForm() {
               </NativeSelectOption>
             ))}
           </NativeSelect>
-          <FieldError field="priority" error={state.fieldErrors.priority} />
+          <FieldError field="priority" error={fieldErrors.priority} />
         </div>
       </div>
 
-      <div>
-        <Button type="submit" disabled={pending}>
+      <div className="flex flex-col items-start gap-3">
+        {formError && (
+          <p role="alert" className="text-sm text-destructive">
+            {formError}
+          </p>
+        )}
+        <Button type="submit" disabled={busy}>
+          {busy && <Spinner aria-label="Saving the request" />}
           Submit request
         </Button>
       </div>

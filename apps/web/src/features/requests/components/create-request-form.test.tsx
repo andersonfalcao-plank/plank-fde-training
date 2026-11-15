@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -8,10 +9,16 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createRequestAction } from "@/features/requests/server/actions";
+import {
+  type CreateRequestResult,
+  createRequestAction,
+} from "@/features/requests/server/actions";
 
 import { CreateRequestForm } from "./create-request-form";
 
+const push = vi.fn();
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("@/features/requests/server/actions", () => ({
   createRequestAction: vi.fn(),
 }));
@@ -19,22 +26,64 @@ vi.mock("@/features/requests/server/actions", () => ({
 afterEach(() => {
   cleanup();
   vi.mocked(createRequestAction).mockReset();
+  push.mockReset();
 });
 
+function renderForm() {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <CreateRequestForm />
+    </QueryClientProvider>,
+  );
+}
+
 function submit() {
-  fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
+  fireEvent.click(screen.getByRole("button", { name: /Submit request/ }));
+}
+
+function fillIn() {
+  fireEvent.change(screen.getByLabelText("Title"), {
+    target: { value: "Laptop" },
+  });
+  fireEvent.change(screen.getByLabelText("Details"), {
+    target: { value: "For Ana" },
+  });
+  fireEvent.change(screen.getByLabelText("Team"), {
+    target: { value: "Finance" },
+  });
+  fireEvent.change(screen.getByLabelText("Priority"), {
+    target: { value: "high" },
+  });
+}
+
+function expectInputKept() {
+  expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe(
+    "Laptop",
+  );
+  expect((screen.getByLabelText("Details") as HTMLTextAreaElement).value).toBe(
+    "For Ana",
+  );
+  expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe(
+    "Finance",
+  );
+  expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe(
+    "high",
+  );
 }
 
 describe("CreateRequestForm", () => {
   it("shows the fields in order: title, details, team, priority, then the submit button", () => {
-    render(<CreateRequestForm />);
+    renderForm();
 
     const fields = [
       screen.getByLabelText("Title"),
       screen.getByLabelText("Details"),
       screen.getByLabelText("Team"),
       screen.getByLabelText("Priority"),
-      screen.getByRole("button", { name: "Submit request" }),
+      screen.getByRole("button", { name: /Submit request/ }),
     ];
     for (let i = 1; i < fields.length; i++) {
       expect(
@@ -45,7 +94,7 @@ describe("CreateRequestForm", () => {
   });
 
   it("AC5: selects medium as the priority", () => {
-    render(<CreateRequestForm />);
+    renderForm();
 
     expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe(
       "medium",
@@ -53,7 +102,7 @@ describe("CreateRequestForm", () => {
   });
 
   it("AC6: shows the teams and the priorities from the hooks", () => {
-    render(<CreateRequestForm />);
+    renderForm();
 
     const teams = Array.from(
       (screen.getByLabelText("Team") as HTMLSelectElement).options,
@@ -72,23 +121,68 @@ describe("CreateRequestForm", () => {
   });
 
   it("AC3: limits the title to 300 characters", () => {
-    render(<CreateRequestForm />);
+    renderForm();
 
     expect(screen.getByLabelText("Title").getAttribute("maxlength")).toBe(
       "300",
     );
   });
 
-  it("AC1: marks the required fields when the action returns errors", async () => {
+  it("AND-32 AC7: sends the form values to the mutation, which calls the server action", async () => {
     vi.mocked(createRequestAction).mockResolvedValue({
+      ok: false,
+      error: "Try again.",
+    });
+    renderForm();
+    fillIn();
+
+    submit();
+
+    await waitFor(() => expect(createRequestAction).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(createRequestAction).mock.calls[0]![0]).toEqual({
+      title: "Laptop",
+      details: "For Ana",
+      team: "Finance",
+      priority: "high",
+    });
+  });
+
+  it("AND-32 AC10: goes to /requests with the created token after a success", async () => {
+    vi.mocked(createRequestAction).mockResolvedValue({
+      ok: true,
+      data: {
+        title: "Laptop",
+        details: "For Ana",
+        team: "Finance",
+        priority: "high",
+        status: "open",
+        id: "4de9754f-db84-44e2-8577-a99067a54be9",
+        createdAt: "2026-11-15T20:26:16.822Z",
+      },
+    });
+    renderForm();
+    fillIn();
+
+    submit();
+
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        "/requests?created=4de9754f-db84-44e2-8577-a99067a54be9",
+      ),
+    );
+  });
+
+  it("AND-32 AC11: puts the 422 field errors on the matching fields", async () => {
+    vi.mocked(createRequestAction).mockResolvedValue({
+      ok: false,
       fieldErrors: {
         title: "Enter a title.",
         details: "Enter the details.",
         team: "Select a team.",
       },
-      values: { title: "", details: "", team: "", priority: "medium" },
+      error: "Invalid input",
     });
-    render(<CreateRequestForm />);
+    renderForm();
 
     submit();
 
@@ -112,63 +206,82 @@ describe("CreateRequestForm", () => {
     expect(
       screen.getByLabelText("Title").getAttribute("aria-describedby"),
     ).toBe("title-error");
+    // The field errors explain the problem, so there is no message above the button.
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("AC1: keeps the values that the user typed after an error", async () => {
+  it("AND-32 AC11: shows error.message above the submit button for a 422 with no field errors", async () => {
     vi.mocked(createRequestAction).mockResolvedValue({
-      fieldErrors: { details: "Enter the details." },
-      values: {
-        title: "Laptop",
-        details: "",
-        team: "Finance",
-        priority: "high",
-      },
-    });
-    render(<CreateRequestForm />);
-
-    submit();
-
-    await waitFor(() => {
-      expect(screen.getByText("Enter the details.")).toBeDefined();
-    });
-    expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe(
-      "Laptop",
-    );
-    expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe(
-      "Finance",
-    );
-    expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe(
-      "high",
-    );
-  });
-
-  it("AC2: sends the form data to the server action", async () => {
-    vi.mocked(createRequestAction).mockResolvedValue({
+      ok: false,
       fieldErrors: {},
-      values: {},
+      error: "Invalid input",
     });
-    render(<CreateRequestForm />);
-    fireEvent.change(screen.getByLabelText("Title"), {
-      target: { value: "Laptop" },
-    });
-    fireEvent.change(screen.getByLabelText("Details"), {
-      target: { value: "For Ana" },
-    });
-    fireEvent.change(screen.getByLabelText("Team"), {
-      target: { value: "Support" },
-    });
+    renderForm();
 
     submit();
 
-    await waitFor(() => {
-      expect(createRequestAction).toHaveBeenCalledTimes(1);
-    });
-    const formData = vi.mocked(createRequestAction).mock.calls[0]![1];
-    expect(Object.fromEntries(formData)).toEqual({
-      title: "Laptop",
-      details: "For Ana",
-      team: "Support",
-      priority: "medium",
-    });
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Invalid input");
+    expect(
+      alert.compareDocumentPosition(
+        screen.getByRole("button", { name: /Submit request/ }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it.each<[string, () => void]>([
+    [
+      "a 400 or a 500",
+      () =>
+        vi.mocked(createRequestAction).mockResolvedValue({
+          ok: false,
+          error: "Try again.",
+        }),
+    ],
+    [
+      "a network error",
+      () =>
+        vi
+          .mocked(createRequestAction)
+          .mockRejectedValue(new TypeError("Failed to fetch")),
+    ],
+  ])(
+    'AND-32 AC12: shows "Try again." and keeps the input after %s',
+    async (_name, mockResult) => {
+      mockResult();
+      renderForm();
+      fillIn();
+
+      submit();
+
+      expect((await screen.findByRole("alert")).textContent).toBe("Try again.");
+      expectInputKept();
+      expect(push).not.toHaveBeenCalled();
+    },
+  );
+
+  it("AND-32 AC13: disables the submit button and shows a spinner while the mutation is pending", async () => {
+    let finish: (result: CreateRequestResult) => void = () => {};
+    vi.mocked(createRequestAction).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    renderForm();
+    const button = screen.getByRole("button", { name: /Submit request/ });
+    expect(button.hasAttribute("disabled")).toBe(false);
+    expect(screen.queryByRole("status")).toBeNull();
+
+    submit();
+
+    await waitFor(() => expect(button.hasAttribute("disabled")).toBe(true));
+    expect(
+      screen.getByRole("status", { name: "Saving the request" }),
+    ).toBeDefined();
+
+    finish({ ok: false, error: "Try again." });
+
+    await waitFor(() => expect(button.hasAttribute("disabled")).toBe(false));
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

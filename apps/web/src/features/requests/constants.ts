@@ -8,6 +8,10 @@ export const TITLE_MAX_LENGTH = 300;
 // The Requests page then shows a success message one time for each token.
 export const CREATED_PARAM = "created";
 
+// The text for an error that the user cannot fix, for example a 500 or a
+// network error. The user can send the request again.
+export const TRY_AGAIN_MESSAGE = "Try again.";
+
 // The teams that the new request form shows. The schema accepts any team name.
 export const REQUEST_TEAMS = ["Operations", "Finance", "Support"] as const;
 

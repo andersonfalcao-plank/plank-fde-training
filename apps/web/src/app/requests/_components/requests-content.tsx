@@ -1,25 +1,14 @@
-import { connection } from "next/server";
-
-import { CREATED_PARAM, RequestsView } from "@/features/requests";
-import { getRequests } from "@/features/requests/server/queries";
+import { CREATED_PARAM, RequestsList } from "@/features/requests";
 
 type RequestsContentProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+// Reads the created token on the server. The client loads the Requests.
 export async function RequestsContent({ searchParams }: RequestsContentProps) {
-  // The Requests are in memory and change at request time.
-  await connection();
   const params = await searchParams;
-  const requests = await getRequests();
-
   const created = params[CREATED_PARAM];
   const createdToken = Array.isArray(created) ? created[0] : created;
 
-  return (
-    <RequestsView
-      requests={requests}
-      createdToken={createdToken || undefined}
-    />
-  );
+  return <RequestsList createdToken={createdToken || undefined} />;
 }

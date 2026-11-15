@@ -7,7 +7,6 @@ import {
   listSavedRequests,
   saveRequest,
 } from "@/features/requests/server/api-store";
-import { listRequests } from "@/features/requests/server/store";
 
 const input = {
   title: "Laptop for the new hire",
@@ -51,14 +50,6 @@ describe("saveRequest", () => {
       ZodError,
     );
     expect(await listSavedRequests()).toEqual([]);
-  });
-
-  it("does not change the list that the pages use", async () => {
-    const before = listRequests();
-
-    await saveRequest(input);
-
-    expect(listRequests()).toEqual(before);
   });
 });
 

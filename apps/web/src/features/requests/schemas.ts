@@ -64,3 +64,8 @@ export const SavedRequestSchema = RequestSchema.extend({
 });
 
 export type SavedRequest = z.output<typeof SavedRequestSchema>;
+
+// The body of GET /api/requests. The API route and the client use this schema.
+export const RequestListResponseSchema = z.object({
+  data: z.array(SavedRequestSchema),
+});
