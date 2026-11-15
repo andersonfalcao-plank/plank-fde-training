@@ -5,6 +5,10 @@
 export { CreateRequestForm } from "./components/create-request-form";
 export { RequestTable } from "./components/request-table";
 export { RequestsList } from "./components/requests-list";
+export {
+  LATEST_REQUESTS_COUNT,
+  RequestsOverview,
+} from "./components/requests-overview";
 export { RequestsView } from "./components/requests-view";
 export {
   CREATED_PARAM,
