@@ -14,6 +14,13 @@ export const ErrorResponseSchema = z.object({
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
+// The body of a 422 response. It has the messages for each field that is not valid.
+export const FieldErrorResponseSchema = ErrorResponseSchema.extend({
+  fieldErrors: z.record(z.string(), z.array(z.string())),
+});
+
+export type FieldErrorResponse = z.infer<typeof FieldErrorResponseSchema>;
+
 type Issue = NonNullable<ErrorResponse["error"]["issues"]>[number];
 
 export class HttpError extends Error {
@@ -30,6 +37,13 @@ export class ValidationError extends HttpError {
   constructor(readonly issues: Issue[]) {
     super(400, "Invalid input");
     this.name = "ValidationError";
+  }
+}
+
+export class FieldValidationError extends HttpError {
+  constructor(readonly fieldErrors: FieldErrorResponse["fieldErrors"]) {
+    super(422, "Invalid input");
+    this.name = "FieldValidationError";
   }
 }
 
@@ -63,19 +77,37 @@ export function parseInput<T extends z.ZodType>(
   return result.data;
 }
 
-export async function parseBody<T extends z.ZodType>(
-  request: Request,
-  schema: T,
-): Promise<z.output<T>> {
-  let body: unknown;
+async function readJson(request: Request): Promise<unknown> {
   try {
-    body = await request.json();
+    return await request.json();
   } catch {
     throw new ValidationError([
       { path: "", message: "The body is not valid JSON" },
     ]);
   }
-  return parseInput(schema, body);
+}
+
+export async function parseBody<T extends z.ZodType>(
+  request: Request,
+  schema: T,
+): Promise<z.output<T>> {
+  return parseInput(schema, await readJson(request));
+}
+
+// Like parseBody, but a body that does not match the schema gives a 422
+// with the messages for each field. A body that is not JSON gives a 400.
+export async function parseBodyFields<T extends z.ZodType>(
+  request: Request,
+  schema: T,
+): Promise<z.output<T>> {
+  const result = schema.safeParse(await readJson(request));
+  if (!result.success) {
+    const { fieldErrors } = z.flattenError(result.error);
+    throw new FieldValidationError(
+      fieldErrors as FieldErrorResponse["fieldErrors"],
+    );
+  }
+  return result.data;
 }
 
 export function parseSearchParams<T extends z.ZodType>(
@@ -89,6 +121,15 @@ export function parseSearchParams<T extends z.ZodType>(
 }
 
 export function errorResponse(error: unknown): Response {
+  if (error instanceof FieldValidationError) {
+    return Response.json(
+      {
+        error: { message: error.message },
+        fieldErrors: error.fieldErrors,
+      } satisfies FieldErrorResponse,
+      { status: error.status },
+    );
+  }
   if (error instanceof ValidationError) {
     return Response.json(
       {

@@ -4,9 +4,11 @@ import { z } from "zod";
 import {
   ConflictError,
   ErrorResponseSchema,
+  FieldErrorResponseSchema,
   handle,
   NotFoundError,
   parseBody,
+  parseBodyFields,
   parseSearchParams,
 } from "./api";
 
@@ -95,5 +97,40 @@ describe("handle", () => {
     expect((await readError(response)).error.message).toBe(
       "Internal server error",
     );
+  });
+});
+
+describe("parseBodyFields", () => {
+  function post(body: string) {
+    return new Request("http://localhost/api/test", { method: "POST", body });
+  }
+
+  it("returns the parsed body when it matches the schema", async () => {
+    const response = await handle(async () =>
+      Response.json(await parseBodyFields(post('{"name":"Ana"}'), Schema)),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ name: "Ana" });
+  });
+
+  it("returns 422 with the field errors when the body does not match the schema", async () => {
+    const response = await handle(async () =>
+      Response.json(await parseBodyFields(post('{"name":""}'), Schema)),
+    );
+
+    expect(response.status).toBe(422);
+    const body = FieldErrorResponseSchema.parse(await response.json());
+    expect(body.error.message).toBe("Invalid input");
+    expect(Object.keys(body.fieldErrors)).toEqual(["name"]);
+  });
+
+  it("returns 400 when the body is not valid JSON", async () => {
+    const response = await handle(async () =>
+      Response.json(await parseBodyFields(post("{"), Schema)),
+    );
+
+    expect(response.status).toBe(400);
+    expect((await readError(response)).error.message).toBe("Invalid input");
   });
 });
