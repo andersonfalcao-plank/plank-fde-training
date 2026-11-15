@@ -134,3 +134,47 @@ describe("parseBodyFields", () => {
     expect((await readError(response)).error.message).toBe("Invalid input");
   });
 });
+
+describe("AND-31: the 422 body", () => {
+  function post(body: string) {
+    return new Request("http://localhost/api/test", { method: "POST", body });
+  }
+
+  it.each(["null", "[]", "5", '"x"'])(
+    "AND-31 AC1: returns 422 with the cause when the body %s is not an object",
+    async (body) => {
+      const response = await handle(async () =>
+        Response.json(await parseBodyFields(post(body), Schema)),
+      );
+
+      expect(response.status).toBe(422);
+      const parsed = FieldErrorResponseSchema.parse(await response.json());
+      expect(parsed.fieldErrors).toEqual({});
+      expect(parsed.formErrors).toHaveLength(1);
+      expect(parsed.formErrors[0]).toMatch(/expected object/);
+    },
+  );
+
+  it("AND-31 AC2: keeps error.message and fieldErrors, with no form errors for a field error", async () => {
+    const response = await handle(async () =>
+      Response.json(await parseBodyFields(post('{"name":""}'), Schema)),
+    );
+
+    expect(FieldErrorResponseSchema.parse(await response.json())).toEqual({
+      error: { message: "Invalid input" },
+      fieldErrors: { name: [expect.any(String)] },
+      formErrors: [],
+    });
+  });
+
+  it("AND-31 AC2: parseBody keeps the 400 format of the other routes", async () => {
+    const response = await handle(async () =>
+      Response.json(await parseBody(post("[]"), Schema)),
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).not.toHaveProperty("formErrors");
+    expect(ErrorResponseSchema.parse(body).error.issues).toBeDefined();
+  });
+});

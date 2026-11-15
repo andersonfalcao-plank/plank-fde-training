@@ -14,9 +14,12 @@ export const ErrorResponseSchema = z.object({
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
-// The body of a 422 response. It has the messages for each field that is not valid.
+// The body of a 422 response. fieldErrors has the messages for each field that
+// is not valid. formErrors has the messages for the body as a whole, for example
+// when the body is not an object.
 export const FieldErrorResponseSchema = ErrorResponseSchema.extend({
   fieldErrors: z.record(z.string(), z.array(z.string())),
+  formErrors: z.array(z.string()),
 });
 
 export type FieldErrorResponse = z.infer<typeof FieldErrorResponseSchema>;
@@ -41,7 +44,10 @@ export class ValidationError extends HttpError {
 }
 
 export class FieldValidationError extends HttpError {
-  constructor(readonly fieldErrors: FieldErrorResponse["fieldErrors"]) {
+  constructor(
+    readonly fieldErrors: FieldErrorResponse["fieldErrors"],
+    readonly formErrors: FieldErrorResponse["formErrors"] = [],
+  ) {
     super(422, "Invalid input");
     this.name = "FieldValidationError";
   }
@@ -102,9 +108,10 @@ export async function parseBodyFields<T extends z.ZodType>(
 ): Promise<z.output<T>> {
   const result = schema.safeParse(await readJson(request));
   if (!result.success) {
-    const { fieldErrors } = z.flattenError(result.error);
+    const { fieldErrors, formErrors } = z.flattenError(result.error);
     throw new FieldValidationError(
       fieldErrors as FieldErrorResponse["fieldErrors"],
+      formErrors,
     );
   }
   return result.data;
@@ -126,6 +133,7 @@ export function errorResponse(error: unknown): Response {
       {
         error: { message: error.message },
         fieldErrors: error.fieldErrors,
+        formErrors: error.formErrors,
       } satisfies FieldErrorResponse,
       { status: error.status },
     );
