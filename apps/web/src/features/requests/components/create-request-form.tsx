@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef } from "react";
+import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,6 @@ export function CreateRequestForm() {
   const mutation = useCreateRequest();
   const teams = useTeams();
   const priorities = usePriorities();
-  const formRef = useRef<HTMLFormElement>(null);
 
   const result = mutation.data;
   const fieldErrors =
@@ -66,23 +65,6 @@ export function CreateRequestForm() {
     : result && !result.ok && !hasFieldErrors
       ? result.error
       : undefined;
-  const succeeded = result?.ok === true;
-  // The page changes after a success. Keep the button disabled until then.
-  const busy = mutation.isPending || succeeded;
-
-  // Next.js keeps a page hidden, with its state, after the user goes to
-  // another page. The New request link then shows the same form again.
-  // When the page hides after a success, clear the fields and the mutation,
-  // so the form is empty and the button works on the next visit.
-  const { reset: resetMutation } = mutation;
-  useEffect(() => {
-    if (!succeeded) return;
-    const form = formRef.current;
-    return () => {
-      form?.reset();
-      resetMutation();
-    };
-  }, [succeeded, resetMutation]);
 
   // The props that mark a field when it has an error.
   function errorProps(field: CreateRequestField) {
@@ -93,19 +75,26 @@ export function CreateRequestForm() {
     };
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     // The form does not reload the page, so the fields keep the user's input.
     event.preventDefault();
-    mutation.mutate(readValues(event.currentTarget));
+    const form = event.currentTarget;
+    const saved = await mutation
+      .mutateAsync(readValues(form))
+      // The mutation state shows the error. Nothing more to do here.
+      .catch(() => undefined);
+    if (!saved?.ok) return;
+    // Next.js keeps a page hidden, with its state, after the user goes to
+    // another page. The New request link then shows the same form again, so
+    // clear it after a success. The promise of mutateAsync resolves also when
+    // the navigation hid the page first, and the mutation state then does not
+    // update. reset() puts the mutation back to idle in both cases.
+    form.reset();
+    mutation.reset();
   }
 
   return (
-    <form
-      ref={formRef}
-      onSubmit={handleSubmit}
-      noValidate
-      className="flex flex-col gap-6"
-    >
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Title</Label>
         <Input
@@ -178,8 +167,8 @@ export function CreateRequestForm() {
             {formError}
           </p>
         )}
-        <Button type="submit" disabled={busy}>
-          {busy && <Spinner aria-label="Saving the request" />}
+        <Button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending && <Spinner aria-label="Saving the request" />}
           Submit request
         </Button>
       </div>

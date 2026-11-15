@@ -141,14 +141,14 @@ describe("createRequestAction", () => {
     });
   });
 
-  it('AND-32 AC8: returns "Try again." when the 201 body does not match the schema', async () => {
+  it("AND-32 AC8: returns a success with no data when the 201 body does not match the schema, so the user does not send it again", async () => {
     fetchMock.mockResolvedValue(
       Response.json({ title: "No id" }, { status: 201 }),
     );
 
     expect(await createRequestAction(values)).toEqual({
-      ok: false,
-      error: "Try again.",
+      ok: true,
+      data: null,
     });
   });
 });

@@ -8,7 +8,8 @@ import { REQUESTS_QUERY_KEY } from "@/features/requests/hooks/use-requests";
 import { createRequestAction } from "@/features/requests/server/actions";
 
 // Saves a Request through the createRequestAction server action.
-// On success, it refreshes the Request list and goes to the Requests page.
+// On success, it marks the Request list as stale and goes to the Requests
+// page. It does not wait for the refetch: the page loads the list when it shows.
 // The id of the new Request is the token for the success message.
 export function useCreateRequest() {
   const queryClient = useQueryClient();
@@ -16,10 +17,13 @@ export function useCreateRequest() {
 
   return useMutation({
     mutationFn: createRequestAction,
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       if (!result.ok) return;
-      await queryClient.invalidateQueries({ queryKey: REQUESTS_QUERY_KEY });
-      router.push(`/requests?${CREATED_PARAM}=${result.data.id}`);
+      void queryClient.invalidateQueries({ queryKey: REQUESTS_QUERY_KEY });
+      // When the API saved the Request but its body could not be read, there
+      // is no id. A new token still shows the success message one time.
+      const token = result.data?.id ?? crypto.randomUUID();
+      router.push(`/requests?${CREATED_PARAM}=${token}`);
     },
   });
 }

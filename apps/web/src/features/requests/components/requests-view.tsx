@@ -1,13 +1,13 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import type { Request } from "@/features/requests/schemas";
+import type { SavedRequest } from "@/features/requests/schemas";
 
 import { CreatedMessage } from "./created-message";
 import { RequestTable } from "./request-table";
 
 type RequestsViewProps = {
-  requests: Request[];
+  requests: SavedRequest[];
   // The token from the created search param. The new request form adds it
   // after it saves a Request.
   createdToken?: string;

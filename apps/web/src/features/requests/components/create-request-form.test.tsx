@@ -312,7 +312,6 @@ describe("CreateRequestForm", () => {
     submit();
     await waitFor(() => expect(push).toHaveBeenCalled());
     const button = screen.getByRole("button", { name: /Submit request/ });
-    expect(button.hasAttribute("disabled")).toBe(true);
 
     // The user is on /requests: Next.js hides the form page.
     rerender(page("hidden"));
@@ -325,6 +324,53 @@ describe("CreateRequestForm", () => {
     expect(
       (screen.getByLabelText("Details") as HTMLTextAreaElement).value,
     ).toBe("");
+    expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("");
+    expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe(
+      "medium",
+    );
+  });
+
+  it("AND-32 AC10: shows an empty form also when the page hides before the success arrives", async () => {
+    let finish: (result: CreateRequestResult) => void = () => {};
+    vi.mocked(createRequestAction).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const queryClient = new QueryClient();
+    const page = (mode: "visible" | "hidden") => (
+      <QueryClientProvider client={queryClient}>
+        <Activity mode={mode}>
+          <CreateRequestForm />
+        </Activity>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(page("visible"));
+    fillIn();
+    submit();
+    const button = screen.getByRole("button", { name: /Submit request/ });
+    await waitFor(() => expect(button.hasAttribute("disabled")).toBe(true));
+
+    // The navigation hides the page first. Then the success state arrives.
+    rerender(page("hidden"));
+    finish({
+      ok: true,
+      data: {
+        title: "Laptop",
+        details: "For Ana",
+        team: "Finance",
+        priority: "high",
+        status: "open",
+        id: "4de9754f-db84-44e2-8577-a99067a54be9",
+        createdAt: "2026-11-15T20:26:16.822Z",
+      },
+    });
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    // The user clicks "New request": Next.js shows the same form page again.
+    rerender(page("visible"));
+
+    await waitFor(() => expect(button.hasAttribute("disabled")).toBe(false));
+    expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("");
     expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe(
       "medium",

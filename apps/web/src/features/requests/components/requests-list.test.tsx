@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -29,6 +30,10 @@ function renderList(createdToken?: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  return renderWith(queryClient, createdToken);
+}
+
+function renderWith(queryClient: QueryClient, createdToken?: string) {
   return render(
     <QueryClientProvider client={queryClient}>
       <RequestsList createdToken={createdToken} />
@@ -123,5 +128,28 @@ describe("RequestsList", () => {
         "role",
       ),
     ).toBe("status");
+  });
+
+  it("AND-32 AC5: keeps the loaded list when a background refetch fails", async () => {
+    fetchMock.mockResolvedValueOnce(
+      Response.json({
+        data: [saved("Loaded", "open", "2026-11-15T12:00:00.000Z")],
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      Response.json({ error: { message: "down" } }, { status: 500 }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    renderWith(queryClient);
+    await screen.findByRole("table");
+
+    await act(() => queryClient.refetchQueries({ queryKey: ["requests"] }));
+
+    expect(queryClient.getQueryState(["requests"])?.status).toBe("error");
+    expect(screen.getByRole("table")).toBeDefined();
+    expect(screen.getByText("Loaded")).toBeDefined();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

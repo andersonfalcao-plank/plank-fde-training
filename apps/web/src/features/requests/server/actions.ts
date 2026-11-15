@@ -16,7 +16,8 @@ export type CreateRequestField = (typeof CREATE_REQUEST_FIELDS)[number];
 export type CreateRequestValues = Partial<Record<CreateRequestField, string>>;
 
 export type CreateRequestResult =
-  | { ok: true; data: SavedRequest }
+  // data is null when the API saved the Request but its body is not valid.
+  | { ok: true; data: SavedRequest | null }
   // A 422: the message for each field that is not valid, and the API message.
   | {
       ok: false;
@@ -60,6 +61,12 @@ export async function createRequestAction(
   if (response.status === 201) {
     const saved = SavedRequestSchema.safeParse(body);
     if (saved.success) return { ok: true, data: saved.data };
+    // The API saved the Request. "Try again." would make the user send it a
+    // second time, so this is still a success.
+    console.error(
+      "POST /api/requests returned 201 with a body that is not valid.",
+    );
+    return { ok: true, data: null };
   }
 
   if (response.status === 422) {

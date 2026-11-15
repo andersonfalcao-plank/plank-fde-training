@@ -24,7 +24,9 @@ export function RequestsList({ createdToken }: RequestsListProps) {
     );
   }
 
-  if (isError) {
+  // Show the error only when there is no list. When a background refetch
+  // fails, the list that loaded before stays on the page.
+  if (isError && !data) {
     return (
       <div className="flex flex-col items-start gap-4">
         <p role="alert">{TRY_AGAIN_MESSAGE}</p>
