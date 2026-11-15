@@ -38,7 +38,7 @@ export default function Home() {
         </p>
         <div className="flex flex-wrap gap-3">
           <Button asChild>
-            <Link href="/settings">
+            <Link href="/admin/settings">
               Open settings
               <ArrowRight data-icon="inline-end" aria-hidden />
             </Link>

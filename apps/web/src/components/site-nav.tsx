@@ -5,14 +5,15 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
+// The WorkBot title links to the home page, so the nav has no Home link.
 const links = [
-  { href: "/", label: "Home" },
   { href: "/requests", label: "Requests" },
-  { href: "/settings", label: "Settings" },
+  { href: "/admin", label: "Admin" },
 ];
 
+// A link is active on its page and on the pages below it. Admin is active on
+// every /admin page.
 function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
