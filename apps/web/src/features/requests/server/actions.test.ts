@@ -1,26 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createRequestAction } from "@/features/requests/server/actions";
 import {
-  type CreateRequestState,
-  createRequestAction,
-} from "@/features/requests/server/actions";
-import { clearRequests, listRequests } from "@/features/requests/server/store";
+  clearSavedRequests,
+  listSavedRequests,
+  saveRequest,
+} from "@/features/requests/server/api-store";
 
-vi.mock("next/navigation", () => ({
-  redirect: vi.fn(),
-}));
+// The real in-memory store runs. The mock only makes a save fail in one test.
+vi.mock("@/features/requests/server/api-store", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/features/requests/server/api-store")
+    >();
+  return { ...actual, saveRequest: vi.fn(actual.saveRequest) };
+});
 
-const { redirect } = await import("next/navigation");
-
-const initialState: CreateRequestState = { fieldErrors: {}, values: {} };
-
-function formData(fields: Record<string, string>) {
-  const data = new FormData();
-  for (const [name, value] of Object.entries(fields)) data.set(name, value);
-  return data;
-}
-
-const valid = {
+const values = {
   title: "Laptop for the new hire",
   details: "Ana starts on Monday.",
   team: "Operations",
@@ -28,97 +24,81 @@ const valid = {
 };
 
 beforeEach(() => {
-  clearRequests();
-  vi.mocked(redirect).mockClear();
+  clearSavedRequests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("createRequestAction", () => {
-  it("AC1/AC4: returns an error for each empty required field and saves nothing", async () => {
-    const state = await createRequestAction(
-      initialState,
-      formData({ title: " ", details: "", team: "", priority: "medium" }),
-    );
+  it("AND-32 AC8: saves the Request in the API store and returns { ok: true, data }", async () => {
+    const result = await createRequestAction(values);
 
-    expect(state.fieldErrors).toEqual({
-      title: "Enter a title.",
-      details: "Enter the details.",
-      team: "Select a team.",
-      priority: undefined,
-    });
-    expect(listRequests()).toEqual([]);
-    expect(redirect).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    const saved = await listSavedRequests();
+    expect(saved).toHaveLength(1);
+    expect(result).toEqual({ ok: true, data: saved[0] });
+    expect(saved[0]).toMatchObject({ ...values, status: "open" });
   });
 
-  it("AC1/AC4: returns the field messages when the browser does not send the fields", async () => {
-    // A select with the disabled "Select a team" option sends no team.
-    const state = await createRequestAction(initialState, formData({}));
+  it("AND-32 AC8: keeps only the known fields, and uses medium for an empty priority", async () => {
+    const result = await createRequestAction({
+      ...values,
+      priority: "",
+      // @ts-expect-error: the client can send other fields. They are not saved.
+      status: "done",
+    });
 
-    expect(state.fieldErrors).toEqual({
-      title: "Enter a title.",
-      details: "Enter the details.",
-      team: "Select a team.",
-      priority: undefined,
+    expect(result.ok).toBe(true);
+    expect((await listSavedRequests())[0]).toMatchObject({
+      priority: "medium",
+      status: "open",
     });
   });
 
-  it("AC1: returns the values that the user sent, so the form keeps them", async () => {
-    const state = await createRequestAction(
-      initialState,
-      formData({ ...valid, details: "" }),
-    );
+  it("AND-32 AC8/AC11: returns { ok: false, fieldErrors, error } for values that are not valid, and saves nothing", async () => {
+    const result = await createRequestAction({
+      title: " ",
+      details: "",
+      team: "",
+      priority: "urgent",
+    });
 
-    expect(state.values).toEqual({ ...valid, details: "" });
+    expect(result).toEqual({
+      ok: false,
+      fieldErrors: {
+        title: "Enter a title.",
+        details: "Enter the details.",
+        team: "Select a team.",
+        priority: "Select a priority.",
+      },
+      error: "Invalid input",
+    });
+    expect(await listSavedRequests()).toEqual([]);
   });
 
-  it("AC3: returns an error for a title of more than 300 characters", async () => {
-    const state = await createRequestAction(
-      initialState,
-      formData({ ...valid, title: "a".repeat(301) }),
-    );
+  it("AND-32 AC11: returns the field messages when the values are missing", async () => {
+    const result = await createRequestAction({});
 
-    expect(state.fieldErrors.title).toBe(
-      "Use 300 characters or fewer for the title.",
-    );
-    expect(listRequests()).toEqual([]);
+    expect(result).toEqual({
+      ok: false,
+      fieldErrors: {
+        title: "Enter a title.",
+        details: "Enter the details.",
+        team: "Select a team.",
+      },
+      error: "Invalid input",
+    });
   });
 
-  it("AND-27 AC9: saves a valid Request and redirects to the Requests page", async () => {
-    await createRequestAction(initialState, formData(valid));
+  it('AND-32 AC12: returns { ok: false, error: "Try again." } when the store fails', async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(saveRequest).mockRejectedValueOnce(new Error("down"));
 
-    expect(listRequests()).toEqual([{ ...valid, status: "open" }]);
-    expect(redirect).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(redirect).mock.calls[0]![0]).toMatch(
-      /^\/requests\?created=[0-9a-f-]{36}$/,
-    );
-  });
-
-  it("AND-28: uses a new created token for each saved Request", async () => {
-    await createRequestAction(initialState, formData(valid));
-    await createRequestAction(initialState, formData(valid));
-
-    const [first, second] = vi
-      .mocked(redirect)
-      .mock.calls.map(([url]) => new URL(url, "http://localhost"));
-    expect(first!.searchParams.get("created")).not.toBe(
-      second!.searchParams.get("created"),
-    );
-  });
-
-  it('AC5: uses "medium" when the form sends no priority', async () => {
-    const { title, details, team } = valid;
-    await createRequestAction(initialState, formData({ title, details, team }));
-
-    expect(listRequests()[0]?.priority).toBe("medium");
-  });
-});
-
-describe("AND-30: the status of a Request from the form", () => {
-  it('AND-30 AC3/AC4: saves the status open when the form sends status "done"', async () => {
-    await createRequestAction(
-      initialState,
-      formData({ ...valid, status: "done" }),
-    );
-
-    expect(listRequests().map((request) => request.status)).toEqual(["open"]);
+    expect(await createRequestAction(values)).toEqual({
+      ok: false,
+      error: "Try again.",
+    });
   });
 });

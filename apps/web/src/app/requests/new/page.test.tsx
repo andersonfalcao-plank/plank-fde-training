@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import NewRequestPage from "./page";
@@ -7,6 +9,16 @@ import NewRequestPage from "./page";
 vi.mock("@/features/requests/server/actions", () => ({
   createRequestAction: vi.fn(),
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
+// The root layout gives each page a QueryClient. The form needs it.
+function wrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={new QueryClient()}>
+      {children}
+    </QueryClientProvider>
+  );
+}
 
 afterEach(() => {
   cleanup();
@@ -14,7 +26,7 @@ afterEach(() => {
 
 describe("NewRequestPage", () => {
   it("shows the description paragraph below the title", () => {
-    render(<NewRequestPage />);
+    render(<NewRequestPage />, { wrapper });
 
     const title = screen.getByRole("heading", {
       level: 1,
@@ -32,7 +44,7 @@ describe("NewRequestPage", () => {
   });
 
   it("shows the description before the form", () => {
-    render(<NewRequestPage />);
+    render(<NewRequestPage />, { wrapper });
 
     const description = screen.getByText(
       "Describe what you need and which team should pick it up.",

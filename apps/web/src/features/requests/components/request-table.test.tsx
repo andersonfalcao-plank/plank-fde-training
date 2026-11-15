@@ -2,7 +2,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { Request } from "@/features/requests/schemas";
+import type { SavedRequest } from "@/features/requests/schemas";
 
 import { RequestTable } from "./request-table";
 
@@ -10,13 +10,15 @@ afterEach(() => {
   cleanup();
 });
 
-const requests: Request[] = [
+const requests: SavedRequest[] = [
   {
     title: "Laptop for the new hire",
     details: "Ana starts on Monday.",
     team: "Operations",
     priority: "high",
     status: "open",
+    id: "00000000-0000-4000-8000-000000000001",
+    createdAt: "2026-11-15T11:00:00.000Z",
   },
   {
     title: "Expense rules",
@@ -24,6 +26,8 @@ const requests: Request[] = [
     team: "Finance",
     priority: "medium",
     status: "in_progress",
+    id: "00000000-0000-4000-8000-000000000002",
+    createdAt: "2026-11-15T12:00:00.000Z",
   },
   {
     title: "Reply to the customer",
@@ -31,6 +35,8 @@ const requests: Request[] = [
     team: "Support",
     priority: "low",
     status: "done",
+    id: "00000000-0000-4000-8000-000000000003",
+    createdAt: "2026-11-15T13:00:00.000Z",
   },
 ];
 
@@ -108,5 +114,14 @@ describe("RequestTable", () => {
     expect(cell.className).toContain("truncate");
     expect(cell.getAttribute("title")).toBe(title);
     expect(screen.getByRole("table").className).toContain("table-fixed");
+  });
+
+  it("AND-32 AC6: keys each row by the Request id, so a new Request at the top does not move the other rows", () => {
+    const { rerender } = render(<RequestTable requests={requests.slice(1)} />);
+    const before = row("Expense rules");
+
+    rerender(<RequestTable requests={requests} />);
+
+    expect(row("Expense rules")).toBe(before);
   });
 });

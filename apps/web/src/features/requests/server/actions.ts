@@ -1,57 +1,67 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { CREATED_PARAM } from "@/features/requests/constants";
-import { CreateRequestSchema } from "@/features/requests/schemas";
-import { createRequest } from "@/features/requests/server/store";
+import { TRY_AGAIN_MESSAGE } from "@/features/requests/constants";
+import {
+  CreateRequestSchema,
+  type SavedRequest,
+} from "@/features/requests/schemas";
+import { saveRequest } from "@/features/requests/server/api-store";
 
-export type CreateRequestField = "title" | "details" | "team" | "priority";
+const CREATE_REQUEST_FIELDS = ["title", "details", "team", "priority"] as const;
 
-export type CreateRequestState = {
-  // The message for each field that is not valid.
-  fieldErrors: Partial<Record<CreateRequestField, string>>;
-  // The values that the user sent. The form shows them again after an error.
-  values: Partial<Record<CreateRequestField, string>>;
-};
+export type CreateRequestField = (typeof CREATE_REQUEST_FIELDS)[number];
 
-// A field that the browser does not send (for example a select with no
-// option selected) reads as "".
-function readText(formData: FormData, name: CreateRequestField) {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
+// The values that the form sends. The server action validates them.
+export type CreateRequestValues = Partial<Record<CreateRequestField, string>>;
+
+export type CreateRequestResult =
+  | { ok: true; data: SavedRequest }
+  // The values are not valid: the message for each field, and a general message.
+  | {
+      ok: false;
+      fieldErrors: Partial<Record<CreateRequestField, string>>;
+      error: string;
+    }
+  // The store failed.
+  | { ok: false; error: string };
+
+// Keeps only the known fields, as strings. The client data is not trusted.
+// An empty priority is left out, so the schema uses "medium".
+function toInput(values: CreateRequestValues) {
+  const input: CreateRequestValues = {};
+  for (const field of CREATE_REQUEST_FIELDS) {
+    const value = values?.[field];
+    if (typeof value === "string") input[field] = value;
+  }
+  if (!input.priority) delete input.priority;
+  return input;
 }
 
-// Validates the form. Returns the field errors and the sent values, or saves
-// the Request and goes to the Requests page with a success message.
+// Validates the values with the create input schema and saves the Request in
+// the same store as POST /api/requests. It calls the store directly, not the
+// API over HTTP: an HTTP call needs a full URL, and on a protected Vercel
+// preview it gets the login page.
+// It does not throw: the client shows each result in the form.
 export async function createRequestAction(
-  _previousState: CreateRequestState,
-  formData: FormData,
-): Promise<CreateRequestState> {
-  const values = {
-    title: readText(formData, "title"),
-    details: readText(formData, "details"),
-    team: readText(formData, "team"),
-    priority: readText(formData, "priority") || undefined,
-  };
-
-  const result = CreateRequestSchema.safeParse(values);
-  if (!result.success) {
-    const { fieldErrors } = z.flattenError(result.error);
-    return {
-      fieldErrors: {
-        title: fieldErrors.title?.[0],
-        details: fieldErrors.details?.[0],
-        team: fieldErrors.team?.[0],
-        priority: fieldErrors.priority?.[0],
-      },
-      values,
-    };
+  values: CreateRequestValues,
+): Promise<CreateRequestResult> {
+  const parsed = CreateRequestSchema.safeParse(toInput(values));
+  if (!parsed.success) {
+    const { fieldErrors: messages } = z.flattenError(parsed.error);
+    const fieldErrors: Partial<Record<CreateRequestField, string>> = {};
+    for (const field of CREATE_REQUEST_FIELDS) {
+      const message = messages[field]?.[0];
+      if (message) fieldErrors[field] = message;
+    }
+    return { ok: false, fieldErrors, error: "Invalid input" };
   }
 
-  createRequest(result.data);
-  // A new token for each saved Request. The Requests page shows the success
-  // message one time for each token.
-  redirect(`/requests?${CREATED_PARAM}=${crypto.randomUUID()}`);
+  try {
+    return { ok: true, data: await saveRequest(parsed.data) };
+  } catch (error) {
+    console.error(error);
+    return { ok: false, error: TRY_AGAIN_MESSAGE };
+  }
 }

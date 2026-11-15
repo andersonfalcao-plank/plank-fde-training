@@ -6,8 +6,8 @@ import {
   type SavedRequest,
 } from "@/features/requests/schemas";
 
-// The Requests that the API saves, newest first. This list is not the list in store.ts:
-// the pages use that list until the frontend changes to the API.
+// The Requests that the API saves, newest first. This is the only Request store.
+// The pages read and save the Requests through /api/requests.
 // The list is on globalThis, so it stays after a dev server reload.
 // The list is lost when the server restarts.
 const globalForApiRequests = globalThis as typeof globalThis & {

@@ -2,7 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { Request } from "@/features/requests/schemas";
+import type { SavedRequest } from "@/features/requests/schemas";
 
 import { RequestsView } from "./requests-view";
 
@@ -10,12 +10,14 @@ afterEach(() => {
   cleanup();
 });
 
-const request: Request = {
+const request: SavedRequest = {
   title: "Laptop for the new hire",
   details: "Ana starts on Monday.",
   team: "Operations",
   priority: "high",
   status: "open",
+  id: "00000000-0000-4000-8000-000000000001",
+  createdAt: "2026-11-15T10:00:00.000Z",
 };
 
 function follows(first: Element, second: Element) {

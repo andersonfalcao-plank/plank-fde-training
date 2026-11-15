@@ -2,12 +2,12 @@ import { z } from "zod";
 
 import {
   CreateRequestSchema,
+  RequestListResponseSchema,
   SavedRequestSchema,
 } from "@/features/requests/schemas";
 
-export const GetRequestsResponseSchema = z.object({
-  data: z.array(SavedRequestSchema),
-});
+// The client parses the same response, so the schema is in the feature.
+export const GetRequestsResponseSchema = RequestListResponseSchema;
 export type GetRequestsResponse = z.infer<typeof GetRequestsResponseSchema>;
 
 // The body uses the create input schema of the form, with no other rules.

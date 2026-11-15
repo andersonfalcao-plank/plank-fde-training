@@ -14,7 +14,7 @@ import {
   type RequestPriority,
   STATUS_LABELS,
 } from "@/features/requests/constants";
-import type { Request } from "@/features/requests/schemas";
+import type { SavedRequest } from "@/features/requests/schemas";
 
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 
@@ -25,7 +25,7 @@ const priorityVariants: Record<RequestPriority, BadgeVariant> = {
 };
 
 type RequestTableProps = {
-  requests: Request[];
+  requests: SavedRequest[];
 };
 
 export function RequestTable({ requests }: RequestTableProps) {
@@ -42,9 +42,8 @@ export function RequestTable({ requests }: RequestTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {requests.map((request, index) => (
-          // A Request has no id yet, so the key is its position in the list.
-          <TableRow key={index}>
+        {requests.map((request) => (
+          <TableRow key={request.id}>
             {/* A long title is cut with "…". The title attribute shows all of it. */}
             <TableCell className="truncate font-medium" title={request.title}>
               {request.title}
