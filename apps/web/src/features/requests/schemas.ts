@@ -49,3 +49,11 @@ export const RequestSchema = z.object({
 // The input can leave out priority and status.
 export type RequestInput = z.input<typeof RequestSchema>;
 export type Request = z.output<typeof RequestSchema>;
+
+// A Request that the API saved. The API adds the id and the creation time.
+export const SavedRequestSchema = RequestSchema.extend({
+  id: z.uuid(),
+  createdAt: z.iso.datetime(),
+});
+
+export type SavedRequest = z.output<typeof SavedRequestSchema>;
