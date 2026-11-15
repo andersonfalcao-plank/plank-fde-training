@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { type FormEvent, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,7 @@ export function CreateRequestForm() {
   const mutation = useCreateRequest();
   const teams = useTeams();
   const priorities = usePriorities();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const result = mutation.data;
   const fieldErrors =
@@ -65,8 +66,23 @@ export function CreateRequestForm() {
     : result && !result.ok && !hasFieldErrors
       ? result.error
       : undefined;
+  const succeeded = result?.ok === true;
   // The page changes after a success. Keep the button disabled until then.
-  const busy = mutation.isPending || result?.ok === true;
+  const busy = mutation.isPending || succeeded;
+
+  // Next.js keeps a page hidden, with its state, after the user goes to
+  // another page. The New request link then shows the same form again.
+  // When the page hides after a success, clear the fields and the mutation,
+  // so the form is empty and the button works on the next visit.
+  const { reset: resetMutation } = mutation;
+  useEffect(() => {
+    if (!succeeded) return;
+    const form = formRef.current;
+    return () => {
+      form?.reset();
+      resetMutation();
+    };
+  }, [succeeded, resetMutation]);
 
   // The props that mark a field when it has an error.
   function errorProps(field: CreateRequestField) {
@@ -84,7 +100,12 @@ export function CreateRequestForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      noValidate
+      className="flex flex-col gap-6"
+    >
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Title</Label>
         <Input

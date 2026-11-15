@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { Activity } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -283,5 +284,50 @@ describe("CreateRequestForm", () => {
 
     await waitFor(() => expect(button.hasAttribute("disabled")).toBe(false));
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("AND-32 AC10: shows an empty form with a working button when the user comes back after a success", async () => {
+    vi.mocked(createRequestAction).mockResolvedValue({
+      ok: true,
+      data: {
+        title: "Laptop",
+        details: "For Ana",
+        team: "Finance",
+        priority: "high",
+        status: "open",
+        id: "4de9754f-db84-44e2-8577-a99067a54be9",
+        createdAt: "2026-11-15T20:26:16.822Z",
+      },
+    });
+    const queryClient = new QueryClient();
+    const page = (mode: "visible" | "hidden") => (
+      <QueryClientProvider client={queryClient}>
+        <Activity mode={mode}>
+          <CreateRequestForm />
+        </Activity>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(page("visible"));
+    fillIn();
+    submit();
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    const button = screen.getByRole("button", { name: /Submit request/ });
+    expect(button.hasAttribute("disabled")).toBe(true);
+
+    // The user is on /requests: Next.js hides the form page.
+    rerender(page("hidden"));
+    // The user clicks "New request": Next.js shows the same form page again.
+    rerender(page("visible"));
+
+    await waitFor(() => expect(button.hasAttribute("disabled")).toBe(false));
+    expect(screen.queryByRole("status")).toBeNull();
+    expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe("");
+    expect(
+      (screen.getByLabelText("Details") as HTMLTextAreaElement).value,
+    ).toBe("");
+    expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("");
+    expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe(
+      "medium",
+    );
   });
 });
