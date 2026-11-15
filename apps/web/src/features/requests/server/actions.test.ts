@@ -111,3 +111,14 @@ describe("createRequestAction", () => {
     expect(listRequests()[0]?.priority).toBe("medium");
   });
 });
+
+describe("AND-30: the status of a Request from the form", () => {
+  it('AND-30 AC3/AC4: saves the status open when the form sends status "done"', async () => {
+    await createRequestAction(
+      initialState,
+      formData({ ...valid, status: "done" }),
+    );
+
+    expect(listRequests().map((request) => request.status)).toEqual(["open"]);
+  });
+});

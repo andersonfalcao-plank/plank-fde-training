@@ -1,9 +1,9 @@
 import "server-only";
 
 import {
+  type CreateRequestInput,
+  CreateRequestSchema,
   type Request,
-  type RequestInput,
-  RequestSchema,
 } from "@/features/requests/schemas";
 
 // The Requests are in a list in memory. The list is on globalThis, so all
@@ -18,9 +18,13 @@ function requests(): Request[] {
   return globalForRequests.workbotRequests;
 }
 
+// Saves a new Request with the status "open".
 // Throws a ZodError when the input is not valid.
-export function createRequest(input: RequestInput): Request {
-  const request = RequestSchema.parse(input);
+export function createRequest(input: CreateRequestInput): Request {
+  const request: Request = {
+    ...CreateRequestSchema.parse(input),
+    status: "open",
+  };
   requests().push(request);
   return request;
 }

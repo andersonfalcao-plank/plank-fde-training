@@ -1,8 +1,8 @@
 import "server-only";
 
 import {
-  type RequestInput,
-  RequestSchema,
+  type CreateRequestInput,
+  CreateRequestSchema,
   type SavedRequest,
 } from "@/features/requests/schemas";
 
@@ -19,13 +19,16 @@ function savedRequests(): SavedRequest[] {
   return globalForApiRequests.workbotApiRequests;
 }
 
-// Gives the Request an id and a creation time, and saves it.
+// Gives the Request an id, a creation time and the status "open", and saves it.
 // Puts it before the first Request that is not newer, so the list stays newest
 // first and a read does not sort it. Usually that is the start of the list.
 // Throws a ZodError when the input is not valid.
-export async function saveRequest(input: RequestInput): Promise<SavedRequest> {
+export async function saveRequest(
+  input: CreateRequestInput,
+): Promise<SavedRequest> {
   const request: SavedRequest = {
-    ...RequestSchema.parse(input),
+    ...CreateRequestSchema.parse(input),
+    status: "open",
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
   };

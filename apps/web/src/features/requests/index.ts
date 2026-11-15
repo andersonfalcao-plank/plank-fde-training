@@ -18,6 +18,8 @@ export {
 export { type PriorityOption, usePriorities } from "./hooks/use-priorities";
 export { type TeamOption, useTeams } from "./hooks/use-teams";
 export {
+  type CreateRequestInput,
+  CreateRequestSchema,
   type Request,
   type RequestInput,
   RequestPrioritySchema,

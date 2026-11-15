@@ -31,3 +31,15 @@ describe("getRequests", () => {
     expect(await getRequests()).toEqual([]);
   });
 });
+
+describe("AND-30: the status in the Request list", () => {
+  it("AND-30 AC5: the list sent to the client has the status of each Request", async () => {
+    createRequest({ title: "First", details: "One.", team: "Support" });
+    createRequest({ title: "Second", details: "Two.", team: "Finance" });
+
+    expect((await getRequests()).map((request) => request.status)).toEqual([
+      "open",
+      "open",
+    ]);
+  });
+});
