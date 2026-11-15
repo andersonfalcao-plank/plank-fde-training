@@ -108,16 +108,4 @@ describe("useCreateRequest", () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["requests"] });
     expect(push).toHaveBeenCalledWith(`/requests?created=${saved.id}`);
   });
-
-  it("AND-32 AC10: goes to /requests with a new token when the saved Request has no data", async () => {
-    vi.mocked(createRequestAction).mockResolvedValue({ ok: true, data: null });
-    const { result } = setup();
-
-    await act(() => result.current.mutateAsync(values));
-
-    expect(push).toHaveBeenCalledTimes(1);
-    expect(push.mock.calls[0]![0]).toMatch(
-      /^\/requests\?created=[0-9a-f-]{36}$/,
-    );
-  });
 });

@@ -20,10 +20,7 @@ export function useCreateRequest() {
     onSuccess: (result) => {
       if (!result.ok) return;
       void queryClient.invalidateQueries({ queryKey: REQUESTS_QUERY_KEY });
-      // When the API saved the Request but its body could not be read, there
-      // is no id. A new token still shows the success message one time.
-      const token = result.data?.id ?? crypto.randomUUID();
-      router.push(`/requests?${CREATED_PARAM}=${token}`);
+      router.push(`/requests?${CREATED_PARAM}=${result.data.id}`);
     },
   });
 }

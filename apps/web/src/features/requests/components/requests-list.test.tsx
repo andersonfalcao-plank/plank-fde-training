@@ -10,11 +10,18 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { RequestStatus } from "@/features/requests/constants";
+import type { SavedRequest } from "@/features/requests/schemas";
+
 import { RequestsList } from "./requests-list";
 
 const fetchMock = vi.fn<typeof fetch>();
 
-function saved(title: string, status: string, createdAt: string) {
+function saved(
+  title: string,
+  status: RequestStatus,
+  createdAt: string,
+): SavedRequest {
   return {
     title,
     details: "Details.",
@@ -26,17 +33,24 @@ function saved(title: string, status: string, createdAt: string) {
   };
 }
 
-function renderList(createdToken?: string) {
+function renderList(createdToken?: string, initialRequests?: SavedRequest[]) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return renderWith(queryClient, createdToken);
+  return renderWith(queryClient, createdToken, initialRequests);
 }
 
-function renderWith(queryClient: QueryClient, createdToken?: string) {
+function renderWith(
+  queryClient: QueryClient,
+  createdToken?: string,
+  initialRequests?: SavedRequest[],
+) {
   return render(
     <QueryClientProvider client={queryClient}>
-      <RequestsList createdToken={createdToken} />
+      <RequestsList
+        createdToken={createdToken}
+        initialRequests={initialRequests}
+      />
     </QueryClientProvider>,
   );
 }
@@ -151,5 +165,18 @@ describe("RequestsList", () => {
     expect(screen.getByRole("table")).toBeDefined();
     expect(screen.getByText("Loaded")).toBeDefined();
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("AND-32 AC6: shows the list that the server read at once, with no spinner and no fetch", () => {
+    renderList(undefined, [
+      saved("From the server", "open", "2026-11-15T12:00:00.000Z"),
+    ]);
+
+    expect(
+      screen.queryByRole("status", { name: "Loading the requests" }),
+    ).toBeNull();
+    expect(screen.getByRole("table")).toBeDefined();
+    expect(screen.getByText("From the server")).toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

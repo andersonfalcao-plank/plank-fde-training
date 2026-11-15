@@ -4,17 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { TRY_AGAIN_MESSAGE } from "@/features/requests/constants";
 import { useRequests } from "@/features/requests/hooks/use-requests";
+import type { SavedRequest } from "@/features/requests/schemas";
 
 import { RequestsView } from "./requests-view";
 
 type RequestsListProps = {
+  // The list that the server read for this page. Without it, the client loads
+  // the list and shows the spinner.
+  initialRequests?: SavedRequest[];
   // The token from the created search param.
   createdToken?: string;
 };
 
 // Loads the Requests from the API, and shows the spinner, the error or the list.
-export function RequestsList({ createdToken }: RequestsListProps) {
-  const { data, isPending, isError, isFetching, refetch } = useRequests();
+export function RequestsList({
+  initialRequests,
+  createdToken,
+}: RequestsListProps) {
+  const { data, isPending, isError, isFetching, refetch } =
+    useRequests(initialRequests);
 
   if (isPending) {
     return (

@@ -1,86 +1,67 @@
 "use server";
 
+import { z } from "zod";
+
 import { TRY_AGAIN_MESSAGE } from "@/features/requests/constants";
 import {
+  CreateRequestSchema,
   type SavedRequest,
-  SavedRequestSchema,
 } from "@/features/requests/schemas";
-import { FieldErrorResponseSchema } from "@/lib/api";
-import { config } from "@/lib/config";
+import { saveRequest } from "@/features/requests/server/api-store";
 
 const CREATE_REQUEST_FIELDS = ["title", "details", "team", "priority"] as const;
 
 export type CreateRequestField = (typeof CREATE_REQUEST_FIELDS)[number];
 
-// The values that the form sends. The API validates them.
+// The values that the form sends. The server action validates them.
 export type CreateRequestValues = Partial<Record<CreateRequestField, string>>;
 
 export type CreateRequestResult =
-  // data is null when the API saved the Request but its body is not valid.
-  | { ok: true; data: SavedRequest | null }
-  // A 422: the message for each field that is not valid, and the API message.
+  | { ok: true; data: SavedRequest }
+  // The values are not valid: the message for each field, and a general message.
   | {
       ok: false;
       fieldErrors: Partial<Record<CreateRequestField, string>>;
       error: string;
     }
-  // A 400, a 500, a network error or a response that is not valid.
+  // The store failed.
   | { ok: false; error: string };
 
-// Sends only the known fields, as strings. The client data is not trusted.
-// An empty priority is left out, so the API uses "medium".
-function toBody(values: CreateRequestValues) {
-  const body: CreateRequestValues = {};
+// Keeps only the known fields, as strings. The client data is not trusted.
+// An empty priority is left out, so the schema uses "medium".
+function toInput(values: CreateRequestValues) {
+  const input: CreateRequestValues = {};
   for (const field of CREATE_REQUEST_FIELDS) {
     const value = values?.[field];
-    if (typeof value === "string") body[field] = value;
+    if (typeof value === "string") input[field] = value;
   }
-  if (!body.priority) delete body.priority;
-  return body;
+  if (!input.priority) delete input.priority;
+  return input;
 }
 
-// Sends the Request to POST /api/requests and returns the result.
+// Validates the values with the create input schema and saves the Request in
+// the same store as POST /api/requests. It calls the store directly, not the
+// API over HTTP: an HTTP call needs a full URL, and on a protected Vercel
+// preview it gets the login page.
 // It does not throw: the client shows each result in the form.
 export async function createRequestAction(
   values: CreateRequestValues,
 ): Promise<CreateRequestResult> {
-  let response: Response;
+  const parsed = CreateRequestSchema.safeParse(toInput(values));
+  if (!parsed.success) {
+    const { fieldErrors: messages } = z.flattenError(parsed.error);
+    const fieldErrors: Partial<Record<CreateRequestField, string>> = {};
+    for (const field of CREATE_REQUEST_FIELDS) {
+      const message = messages[field]?.[0];
+      if (message) fieldErrors[field] = message;
+    }
+    return { ok: false, fieldErrors, error: "Invalid input" };
+  }
+
   try {
-    response = await fetch(`${config.apiBaseUrl}/api/requests`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(toBody(values)),
-    });
+    return { ok: true, data: await saveRequest(parsed.data) };
   } catch (error) {
     console.error(error);
     return { ok: false, error: TRY_AGAIN_MESSAGE };
   }
-
-  const body: unknown = await response.json().catch(() => undefined);
-
-  if (response.status === 201) {
-    const saved = SavedRequestSchema.safeParse(body);
-    if (saved.success) return { ok: true, data: saved.data };
-    // The API saved the Request. "Try again." would make the user send it a
-    // second time, so this is still a success.
-    console.error(
-      "POST /api/requests returned 201 with a body that is not valid.",
-    );
-    return { ok: true, data: null };
-  }
-
-  if (response.status === 422) {
-    const invalid = FieldErrorResponseSchema.safeParse(body);
-    if (invalid.success) {
-      const fieldErrors: Partial<Record<CreateRequestField, string>> = {};
-      for (const field of CREATE_REQUEST_FIELDS) {
-        const message = invalid.data.fieldErrors[field]?.[0];
-        if (message) fieldErrors[field] = message;
-      }
-      return { ok: false, fieldErrors, error: invalid.data.error.message };
-    }
-  }
-
-  console.error(`POST /api/requests returned ${response.status}.`);
-  return { ok: false, error: TRY_AGAIN_MESSAGE };
 }
